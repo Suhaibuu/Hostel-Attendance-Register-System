@@ -1,13 +1,41 @@
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import LoginPage from './pages/LoginPage';
+import WardenPage from './pages/WardenPage';
+import AdminPage from './pages/AdminPage';
+
+function RootRedirect() {
+  const { user } = useAuth();
+  return user ? <Navigate to="/warden" replace /> : <Navigate to="/login" replace />;
+}
+
 function App() {
   return (
-    <div className="min-h-screen bg-surface flex items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold text-brand-900">HostelTrack</h1>
-        <p className="mt-2 text-lg text-brand-600">
-          Hostel Attendance &amp; Mess Bill Management
-        </p>
-      </div>
-    </div>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route
+            path="/warden"
+            element={
+              <ProtectedRoute>
+                <WardenPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute adminOnly>
+                <AdminPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/" element={<RootRedirect />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 

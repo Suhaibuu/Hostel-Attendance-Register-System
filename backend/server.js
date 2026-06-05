@@ -17,7 +17,7 @@ app.get('/api/health', (_req, res) => {
 // --------------- Routes ---------------
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/students', require('./routes/students'));
-// app.use('/api/attendance', require('./routes/attendance'));
+app.use('/api/attendance', require('./routes/attendance'));
 
 // --------------- Database & Start ---------------
 const PORT = process.env.PORT || 5000;

@@ -14,8 +14,8 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date() });
 });
 
-// --------------- Route placeholders ---------------
-// app.use('/api/auth',    require('./routes/auth'));
+// --------------- Routes ---------------
+app.use('/api/auth', require('./routes/auth'));
 // app.use('/api/students', require('./routes/students'));
 // app.use('/api/attendance', require('./routes/attendance'));
 

@@ -10,7 +10,6 @@ export default function StudentModal({ student, onSave, onClose }) {
     roomNo: student?.roomNo || '',
     department: student?.department || '',
     messPlan: student?.messPlan || 'full',
-    dailyRate: student?.dailyRate || 120,
   });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -31,7 +30,7 @@ export default function StudentModal({ student, onSave, onClose }) {
     if (!validate()) return;
     setSaving(true);
     try {
-      await onSave({ ...form, dailyRate: Number(form.dailyRate) });
+      await onSave(form);
     } catch {
       setErrors({ _form: 'Failed to save. Try again.' });
     } finally {
@@ -57,7 +56,6 @@ export default function StudentModal({ student, onSave, onClose }) {
               ['rollNo', 'Roll No', 'text'],
               ['roomNo', 'Room No', 'text'],
               ['department', 'Department', 'text'],
-              ['dailyRate', 'Daily Rate (₹)', 'number'],
             ].map(([key, label, type]) => (
               <div key={key}>
                 <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>

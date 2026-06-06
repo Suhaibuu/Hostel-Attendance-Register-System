@@ -37,7 +37,6 @@ function StudentRow({ s, i, onEdit, onDeactivate, onHistory }) {
       <td className="py-3 text-slate-600">{s.roomNo}</td>
       <td className="py-3 text-slate-600 hidden md:table-cell">{s.department || '—'}</td>
       <td className="py-3 hidden md:table-cell capitalize">{s.messPlan}</td>
-      <td className="py-3 hidden md:table-cell">₹{s.dailyRate}</td>
       <td className="py-3">
         <Badge variant={s.active ? 'present' : 'absent'}>
           {s.active ? 'Active' : 'Passed Out'}

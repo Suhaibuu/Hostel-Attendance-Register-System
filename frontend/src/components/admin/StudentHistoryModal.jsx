@@ -94,7 +94,6 @@ export default function StudentHistoryModal({ student, onClose }) {
               </Badge>
             </div>
             <p className="text-sm text-slate-500">{student.rollNo} · Room {student.roomNo} · {student.department}</p>
-            <p className="text-xs text-slate-400 mt-0.5">Mess: {student.messPlan} · ₹{student.dailyRate}/day</p>
           </div>
           <button onClick={onClose}
                   className="h-8 w-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors cursor-pointer shrink-0">

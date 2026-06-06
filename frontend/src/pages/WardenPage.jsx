@@ -33,7 +33,7 @@ const getInitials = (name) => {
 // ── Add Student Modal (warden-accessible) ───────────────
 
 function AddStudentModal({ onSave, onClose }) {
-  const [form, setForm] = useState({ name: '', rollNo: '', roomNo: '', department: '', messPlan: 'full', dailyRate: 120 });
+  const [form, setForm] = useState({ name: '', rollNo: '', roomNo: '', department: '', messPlan: 'full' });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
@@ -52,7 +52,7 @@ function AddStudentModal({ onSave, onClose }) {
     if (!validate()) return;
     setSaving(true);
     try {
-      await onSave({ ...form, dailyRate: Number(form.dailyRate) });
+      await onSave(form);
     } catch (err) {
       setErrors({ _form: err.message || 'Failed to add student' });
     } finally {
@@ -68,7 +68,7 @@ function AddStudentModal({ onSave, onClose }) {
       <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl p-6" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-lg font-bold text-slate-800 mb-4">Add New Student</h2>
         <form onSubmit={handleSubmit} className="space-y-3">
-          {[['name','Name','text'],['rollNo','Roll No','text'],['roomNo','Room No','text'],['department','Department','text'],['dailyRate','Daily Rate (₹)','number']].map(([k, label, type]) => (
+          {[['name','Name','text'],['rollNo','Roll No','text'],['roomNo','Room No','text'],['department','Department','text']].map(([k, label, type]) => (
             <div key={k}>
               <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
               <input type={type} value={form[k]} onChange={(e) => set(k, e.target.value)} className={inp} />

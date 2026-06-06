@@ -17,6 +17,11 @@ export const getStudentAttendance = async (studentId, month) => {
   return data;
 };
 
+export const getStudentMonths = async (studentId) => {
+  const { data } = await api.get(`/api/attendance/student/${studentId}/months`);
+  return data; // { months: ["2026-06", "2026-05", ...] }
+};
+
 export const getReport = async (month) => {
   const { data } = await api.get('/api/attendance/report', {
     params: month ? { month } : {},

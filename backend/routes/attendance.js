@@ -104,6 +104,19 @@ router.get('/student/:studentId', async (req, res) => {
   }
 });
 
+// --------------- GET /api/attendance/student/:studentId/months ---------------
+// Returns sorted list of all months (YYYY-MM) that have attendance records
+router.get('/student/:studentId/months', async (req, res) => {
+  try {
+    const records = await Attendance.find({ studentId: req.params.studentId }, 'date');
+    const monthSet = new Set(records.map((r) => r.date.slice(0, 7)));
+    const months = [...monthSet].sort().reverse(); // newest first
+    res.json({ months });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // --------------- GET /api/attendance/report ---------------
 // Admin only — monthly mess bill report
 router.get('/report', async (req, res) => {

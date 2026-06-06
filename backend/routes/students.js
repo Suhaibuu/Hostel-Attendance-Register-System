@@ -63,9 +63,21 @@ router.get('/room/:roomNo', async (req, res) => {
   }
 });
 
+// --------------- GET /api/students/:id ---------------
+// Fetch a single student by ID (for history view)
+router.get('/:id', async (req, res) => {
+  try {
+    const student = await Student.findById(req.params.id);
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+    res.json(student);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // --------------- POST /api/students ---------------
-// Admin only — create a new student
-router.post('/', adminOnly, async (req, res) => {
+// Admin or Warden — create a new student
+router.post('/', async (req, res) => {
   try {
     const { name, rollNo, roomNo, department, messPlan, dailyRate } = req.body;
     const student = await Student.create({ name, rollNo, roomNo, department, messPlan, dailyRate });

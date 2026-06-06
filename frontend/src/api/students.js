@@ -5,6 +5,11 @@ export const getStudents = async (params) => {
   return data;
 };
 
+export const getStudent = async (id) => {
+  const { data } = await api.get(`/api/students/${id}`);
+  return data;
+};
+
 export const getStudentsByRoom = async (roomNo) => {
   const { data } = await api.get(`/api/students/room/${roomNo}`);
   return data;

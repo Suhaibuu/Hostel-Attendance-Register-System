@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getRooms } from '../api/students';
+import { getRooms, createStudent } from '../api/students';
 import { getTodayAttendance, markAttendance } from '../api/attendance';
 import PageWrapper from '../components/layout/PageWrapper';
 import TopBar from '../components/layout/TopBar';
@@ -9,76 +9,118 @@ import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import Toast from '../components/ui/Toast';
 import Spinner from '../components/ui/Spinner';
+import StudentHistoryModal from '../components/admin/StudentHistoryModal';
 
 // ── Helpers ──────────────────────────────────────────────
 
-const formatDate = () => {
-  const d = new Date();
-  return d.toLocaleDateString('en-GB', {
-    weekday: 'long',
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
+const formatDate = () =>
+  new Date().toLocaleDateString('en-GB', {
+    weekday: 'long', day: '2-digit', month: 'short', year: 'numeric',
   });
-};
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
-const avatarColors = [
-  'bg-blue-500',
-  'bg-emerald-500',
-  'bg-purple-500',
-  'bg-orange-500',
-  'bg-pink-500',
-];
-
-const getAvatarColor = (name) => {
-  const code = (name || 'A').charCodeAt(0);
-  return avatarColors[code % avatarColors.length];
-};
-
+const avatarColors = ['bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-orange-500', 'bg-pink-500'];
+const getAvatarColor = (name) => avatarColors[(name || 'A').charCodeAt(0) % avatarColors.length];
 const getInitials = (name) => {
   if (!name) return '??';
   const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return parts.length === 1
+    ? parts[0].slice(0, 2).toUpperCase()
+    : (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 };
 
-// ── Component ────────────────────────────────────────────
+// ── Add Student Modal (warden-accessible) ───────────────
+
+function AddStudentModal({ onSave, onClose }) {
+  const [form, setForm] = useState({ name: '', rollNo: '', roomNo: '', department: '', messPlan: 'full', dailyRate: 120 });
+  const [errors, setErrors] = useState({});
+  const [saving, setSaving] = useState(false);
+  const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+
+  const validate = () => {
+    const e = {};
+    if (!form.name.trim()) e.name = 'Required';
+    if (!form.rollNo.trim()) e.rollNo = 'Required';
+    if (!form.roomNo.trim()) e.roomNo = 'Required';
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validate()) return;
+    setSaving(true);
+    try {
+      await onSave({ ...form, dailyRate: Number(form.dailyRate) });
+    } catch (err) {
+      setErrors({ _form: err.message || 'Failed to add student' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inp = 'w-full border border-[var(--color-border)] rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40" />
+      <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl p-6" onClick={(e) => e.stopPropagation()}>
+        <h2 className="text-lg font-bold text-slate-800 mb-4">Add New Student</h2>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          {[['name','Name','text'],['rollNo','Roll No','text'],['roomNo','Room No','text'],['department','Department','text'],['dailyRate','Daily Rate (₹)','number']].map(([k, label, type]) => (
+            <div key={k}>
+              <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
+              <input type={type} value={form[k]} onChange={(e) => set(k, e.target.value)} className={inp} />
+              {errors[k] && <p className="text-xs text-red-500 mt-1">{errors[k]}</p>}
+            </div>
+          ))}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Mess Plan</label>
+            <select value={form.messPlan} onChange={(e) => set('messPlan', e.target.value)} className={inp}>
+              <option value="full">Full</option>
+              <option value="half">Half</option>
+            </select>
+          </div>
+          {errors._form && <p className="text-sm text-red-500 text-center">{errors._form}</p>}
+          <div className="flex gap-2 pt-2">
+            <Button variant="ghost" onClick={onClose} fullWidth type="button">Cancel</Button>
+            <Button variant="primary" fullWidth type="submit" loading={saving}>Add Student</Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Component ───────────────────────────────────────
 
 export default function WardenPage() {
   const { user, logout } = useAuth();
 
-  // Room data
   const [rooms, setRooms] = useState([]);
   const [roomsLoading, setRoomsLoading] = useState(true);
   const [selectedRoom, setSelectedRoom] = useState(null);
 
-  // Attendance data for selected room
-  const [students, setStudents] = useState([]);         // [{ studentId, name, rollNo, present }]
-  const [marks, setMarks] = useState({});               // { studentId: true | false | null }
+  const [students, setStudents] = useState([]);
+  const [marks, setMarks] = useState({});       // studentId → true | false | null
   const [studentsLoading, setStudentsLoading] = useState(false);
   const [submittedRooms, setSubmittedRooms] = useState(new Set());
 
-  // Submit state
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [historyStudent, setHistoryStudent] = useState(null); // student obj
 
-  // ── Fetch rooms on mount ──
+  // Fetch rooms
   useEffect(() => {
-    (async () => {
-      try {
-        const data = await getRooms();
-        setRooms(data.rooms || []);
-      } catch {
-        setRooms([]);
-      } finally {
-        setRoomsLoading(false);
-      }
-    })();
+    getRooms()
+      .then((d) => setRooms(d.rooms || []))
+      .catch(() => setRooms([]))
+      .finally(() => setRoomsLoading(false));
   }, []);
 
-  // ── Fetch attendance when room changes ──
+  // Fetch attendance when room changes
   const loadRoom = useCallback(async (roomNo) => {
     setSelectedRoom(roomNo);
     setStudentsLoading(true);
@@ -86,14 +128,9 @@ export default function WardenPage() {
       const data = await getTodayAttendance(roomNo);
       setStudents(data.students || []);
       const initial = {};
-      (data.students || []).forEach((s) => {
-        initial[s.studentId] = s.present; // true, false, or null
-      });
+      (data.students || []).forEach((s) => { initial[s.studentId] = s.present; });
       setMarks(initial);
-
-      // If every student already has a value, consider this room submitted
-      const allMarked = (data.students || []).every((s) => s.present !== null);
-      if (allMarked && (data.students || []).length > 0) {
+      if ((data.students || []).length > 0 && (data.students || []).every((s) => s.present !== null)) {
         setSubmittedRooms((prev) => new Set(prev).add(roomNo));
       }
     } catch {
@@ -104,19 +141,20 @@ export default function WardenPage() {
     }
   }, []);
 
-  // ── Mark a student ──
+  // ── Toggle: clicking same button again → deselect (null) ──
   const toggleMark = (studentId, value) => {
-    setMarks((prev) => ({ ...prev, [studentId]: value }));
+    setMarks((prev) => ({
+      ...prev,
+      [studentId]: prev[studentId] === value ? null : value,
+    }));
   };
 
-  // ── Mark all present ──
   const markAllPresent = () => {
     const updated = {};
     students.forEach((s) => { updated[s.studentId] = true; });
     setMarks(updated);
   };
 
-  // ── Submit ──
   const markedCount = Object.values(marks).filter((v) => v !== null).length;
 
   const handleSubmit = async () => {
@@ -125,7 +163,6 @@ export default function WardenPage() {
       const records = Object.entries(marks)
         .filter(([, v]) => v !== null)
         .map(([studentId, present]) => ({ studentId, present }));
-
       await markAttendance({ roomNo: selectedRoom, date: todayISO(), records });
       setSubmittedRooms((prev) => new Set(prev).add(selectedRoom));
       setToast({ message: `✓ Attendance saved for Room ${selectedRoom}`, type: 'success' });
@@ -136,14 +173,23 @@ export default function WardenPage() {
     }
   };
 
-  // ── Room status dot ──
+  const handleAddStudent = async (form) => {
+    await createStudent(form);
+    setShowAddModal(false);
+    setToast({ message: `✓ Student added successfully`, type: 'success' });
+    // Refresh rooms list
+    const d = await getRooms();
+    setRooms(d.rooms || []);
+    // Reload current room if same room
+    if (selectedRoom === form.roomNo) await loadRoom(form.roomNo);
+  };
+
   const roomDot = (roomNo) => {
     if (submittedRooms.has(roomNo)) return 'bg-emerald-400';
     if (roomNo === selectedRoom) return 'bg-amber-400';
     return 'bg-slate-300';
   };
 
-  // ── Render ──
   return (
     <PageWrapper>
       <TopBar
@@ -151,20 +197,21 @@ export default function WardenPage() {
         subtitle={formatDate()}
         rightContent={
           <div className="flex items-center gap-2">
-            <span className="text-xs text-[var(--color-text-secondary)] hidden sm:inline">
-              {user?.name}
-            </span>
-            <Button variant="ghost" size="sm" onClick={logout}>
-              Logout
-            </Button>
+            <span className="text-xs text-[var(--color-text-secondary)] hidden sm:inline">{user?.name}</span>
+            <Button variant="ghost" size="sm" onClick={logout}>Logout</Button>
           </div>
         }
       />
 
       <main className="flex-1 px-4 py-5 pb-28 space-y-5">
-        {/* ── Section 1: Room Selector ── */}
+        {/* ── Section 1: Room Selector + Add Student ── */}
         <div>
-          <h2 className="text-sm font-semibold text-slate-600 mb-2.5">Select Room</h2>
+          <div className="flex items-center justify-between mb-2.5">
+            <h2 className="text-sm font-semibold text-slate-600">Select Room</h2>
+            <Button variant="primary" size="sm" onClick={() => setShowAddModal(true)}>
+              + Add Student
+            </Button>
+          </div>
 
           {roomsLoading ? (
             <div className="flex items-center gap-2 text-sm text-slate-400 py-6 justify-center">
@@ -179,17 +226,14 @@ export default function WardenPage() {
                   key={r}
                   onClick={() => loadRoom(r)}
                   className={[
-                    'relative rounded-xl border py-3 font-bold text-sm transition-all duration-200 cursor-pointer',
-                    'active:scale-95 focus:outline-none',
+                    'relative rounded-xl border py-3 font-bold text-sm transition-all duration-200 cursor-pointer active:scale-95 focus:outline-none',
                     r === selectedRoom
                       ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]'
                       : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300',
                   ].join(' ')}
                 >
                   {r}
-                  <span
-                    className={`absolute top-1.5 right-1.5 h-2 w-2 rounded-full ${roomDot(r)}`}
-                  />
+                  <span className={`absolute top-1.5 right-1.5 h-2 w-2 rounded-full ${roomDot(r)}`} />
                 </button>
               ))}
             </div>
@@ -205,89 +249,65 @@ export default function WardenPage() {
               </div>
             ) : students.length === 0 ? (
               <Card>
-                <p className="text-sm text-slate-400 text-center">
-                  No active students in Room {selectedRoom}
-                </p>
+                <p className="text-sm text-slate-400 text-center">No active students in Room {selectedRoom}</p>
               </Card>
             ) : (
               <>
-                {/* Header row */}
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <h3 className="text-base font-bold text-slate-800">
-                      Room {selectedRoom}
-                    </h3>
+                    <h3 className="text-base font-bold text-slate-800">Room {selectedRoom}</h3>
                     <Badge variant="info">{students.length} students</Badge>
                   </div>
-                  <Button variant="success" size="sm" onClick={markAllPresent}>
-                    ✓ All Present
-                  </Button>
+                  <Button variant="success" size="sm" onClick={markAllPresent}>✓ All Present</Button>
                 </div>
 
-                {/* Student cards */}
                 <div className="space-y-2.5">
                   {students.map((s) => {
                     const status = marks[s.studentId];
                     const rowBg =
-                      status === true
-                        ? 'bg-emerald-50/60 border-emerald-200'
-                        : status === false
-                          ? 'bg-red-50/60 border-red-200'
-                          : 'bg-white border-slate-200';
+                      status === true  ? 'bg-emerald-50/60 border-emerald-200' :
+                      status === false ? 'bg-red-50/60 border-red-200' :
+                                         'bg-white border-slate-200';
 
                     return (
-                      <div
-                        key={s.studentId}
-                        className={[
-                          'flex items-center gap-3 p-3 rounded-2xl border transition-all duration-200',
-                          rowBg,
-                        ].join(' ')}
-                      >
+                      <div key={s.studentId}
+                           className={`flex items-center gap-3 p-3 rounded-2xl border transition-all duration-200 ${rowBg}`}>
                         {/* Avatar */}
-                        <div
-                          className={[
-                            'shrink-0 h-10 w-10 rounded-full flex items-center justify-center',
-                            'text-white text-sm font-bold',
-                            getAvatarColor(s.name),
-                          ].join(' ')}
-                        >
+                        <div className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center text-white text-sm font-bold ${getAvatarColor(s.name)}`}>
                           {getInitials(s.name)}
                         </div>
 
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-slate-800 truncate">
+                        {/* Info — clickable to open history */}
+                        <button
+                          className="flex-1 min-w-0 text-left cursor-pointer"
+                          onClick={() => setHistoryStudent({ _id: s.studentId, name: s.name, rollNo: s.rollNo, roomNo: selectedRoom, active: true, department: '' })}
+                        >
+                          <p className="text-sm font-semibold text-slate-800 truncate hover:text-[var(--color-primary)] transition-colors">
                             {s.name}
                           </p>
-                          <p className="text-xs text-slate-500">{s.rollNo}</p>
-                        </div>
+                          <p className="text-xs text-slate-500">{s.rollNo} · Tap for history</p>
+                        </button>
 
                         {/* Present / Absent pills */}
                         <div className="flex gap-1.5 shrink-0">
                           <button
                             onClick={() => toggleMark(s.studentId, true)}
                             className={[
-                              'px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 cursor-pointer',
-                              'active:scale-95 focus:outline-none',
+                              'px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 cursor-pointer active:scale-95 focus:outline-none',
                               status === true
                                 ? 'bg-[var(--color-success)] text-white'
                                 : 'bg-transparent border border-emerald-300 text-emerald-600',
                             ].join(' ')}
-                          >
-                            ✓
-                          </button>
+                          >✓</button>
                           <button
                             onClick={() => toggleMark(s.studentId, false)}
                             className={[
-                              'px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 cursor-pointer',
-                              'active:scale-95 focus:outline-none',
+                              'px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 cursor-pointer active:scale-95 focus:outline-none',
                               status === false
                                 ? 'bg-[var(--color-danger)] text-white'
                                 : 'bg-transparent border border-red-300 text-red-500',
                             ].join(' ')}
-                          >
-                            ✗
-                          </button>
+                          >✗</button>
                         </div>
                       </div>
                     );
@@ -299,37 +319,20 @@ export default function WardenPage() {
         )}
       </main>
 
-      {/* ── Section 3: Sticky Submit Bar ── */}
+      {/* ── Sticky Submit Bar ── */}
       {selectedRoom && students.length > 0 && (
-        <div
-          className="fixed bottom-0 left-0 right-0 z-40
-                     bg-white/95 backdrop-blur border-t border-[var(--color-border)]
-                     shadow-[0_-4px_12px_rgba(0,0,0,0.05)]
-                     flex items-center justify-between px-4 py-3"
-        >
-          <span className="text-sm text-slate-500">
-            {markedCount} of {students.length} marked
-          </span>
-          <Button
-            variant="primary"
-            size="md"
-            onClick={handleSubmit}
-            disabled={markedCount === 0}
-            loading={submitting}
-          >
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-[var(--color-border)] shadow-[0_-4px_12px_rgba(0,0,0,0.05)] flex items-center justify-between px-4 py-3">
+          <span className="text-sm text-slate-500">{markedCount} of {students.length} marked</span>
+          <Button variant="primary" size="md" onClick={handleSubmit} disabled={markedCount === 0} loading={submitting}>
             Submit Attendance
           </Button>
         </div>
       )}
 
-      {/* ── Toast ── */}
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
+      {/* ── Modals ── */}
+      {showAddModal && <AddStudentModal onSave={handleAddStudent} onClose={() => setShowAddModal(false)} />}
+      {historyStudent && <StudentHistoryModal student={historyStudent} onClose={() => setHistoryStudent(null)} />}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </PageWrapper>
   );
 }

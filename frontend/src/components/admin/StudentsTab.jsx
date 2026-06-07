@@ -5,6 +5,7 @@ import Badge from '../ui/Badge';
 import Button from '../ui/Button';
 import StudentModal from './StudentModal';
 import StudentHistoryModal from './StudentHistoryModal';
+import AssignRoomModal from './AssignRoomModal';
 
 const avatarColors = ['bg-blue-500','bg-emerald-500','bg-purple-500','bg-orange-500','bg-pink-500'];
 const getColor = (n) => avatarColors[(n||'A').charCodeAt(0) % avatarColors.length];
@@ -16,7 +17,7 @@ const initials = (n) => {
 
 // ── Shared student row ────────────────────────────────────
 
-function StudentRow({ s, i, onEdit, onDeactivate, onHistory }) {
+function StudentRow({ s, i, onEdit, onDeactivate, onHistory, onAssignRoom }) {
   return (
     <tr className={i % 2 ? 'bg-slate-50/50' : ''}>
       <td className="py-3 pl-3">
@@ -34,7 +35,13 @@ function StudentRow({ s, i, onEdit, onDeactivate, onHistory }) {
         </div>
       </td>
       <td className="py-3 text-slate-600">{s.rollNo}</td>
-      <td className="py-3 text-slate-600">{s.roomNo}</td>
+      <td className="py-3 text-slate-600">
+        {s.roomNo ? (
+          s.roomNo
+        ) : (
+          <Button variant="ghost" size="sm" onClick={() => onAssignRoom(s)} className="text-amber-600 border-amber-200">Assign Room</Button>
+        )}
+      </td>
       <td className="py-3 text-slate-600 hidden md:table-cell">{s.department || '—'}</td>
       <td className="py-3 hidden md:table-cell capitalize">{s.messPlan}</td>
       <td className="py-3">
@@ -57,7 +64,7 @@ function StudentRow({ s, i, onEdit, onDeactivate, onHistory }) {
 
 // ── Shared table shell ────────────────────────────────────
 
-function StudentTable({ rows, loading, onEdit, onDeactivate, onHistory }) {
+function StudentTable({ rows, loading, onEdit, onDeactivate, onHistory, onAssignRoom }) {
   return (
     <Card padding="sm">
       {loading ? (
@@ -88,7 +95,7 @@ function StudentTable({ rows, loading, onEdit, onDeactivate, onHistory }) {
             </thead>
             <tbody>
               {rows.map((s, i) => (
-                <StudentRow key={s._id} s={s} i={i} onEdit={onEdit} onDeactivate={onDeactivate} onHistory={onHistory} />
+                <StudentRow key={s._id} s={s} i={i} onEdit={onEdit} onDeactivate={onDeactivate} onHistory={onHistory} onAssignRoom={onAssignRoom} />
               ))}
             </tbody>
           </table>
@@ -104,9 +111,10 @@ export default function StudentsTab() {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [subTab, setSubTab] = useState('active'); // 'active' | 'alumni'
+  const [subTab, setSubTab] = useState('active'); // 'active' | 'unallotted' | 'alumni'
   const [modal, setModal] = useState(null);         // null | 'add' | student obj
   const [historyStudent, setHistoryStudent] = useState(null);
+  const [assignRoomModal, setAssignRoomModal] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -118,9 +126,10 @@ export default function StudentsTab() {
   useEffect(() => { load(); }, []);
 
   const q = search.toLowerCase();
-  const activeStudents  = students.filter((s) =>  s.active && (s.name.toLowerCase().includes(q) || s.roomNo.toLowerCase().includes(q) || s.rollNo.toLowerCase().includes(q)));
-  const alumniStudents  = students.filter((s) => !s.active && (s.name.toLowerCase().includes(q) || s.roomNo.toLowerCase().includes(q) || s.rollNo.toLowerCase().includes(q)));
-  const displayed       = subTab === 'active' ? activeStudents : alumniStudents;
+  const activeStudents     = students.filter((s) =>  s.active && !!s.roomNo && (s.name.toLowerCase().includes(q) || s.roomNo.toLowerCase().includes(q) || s.rollNo.toLowerCase().includes(q)));
+  const unallottedStudents = students.filter((s) =>  s.active && !s.roomNo && (s.name.toLowerCase().includes(q) || s.rollNo.toLowerCase().includes(q)));
+  const alumniStudents     = students.filter((s) => !s.active && (s.name.toLowerCase().includes(q) || (s.roomNo || '').toLowerCase().includes(q) || s.rollNo.toLowerCase().includes(q)));
+  const displayed          = subTab === 'active' ? activeStudents : subTab === 'unallotted' ? unallottedStudents : alumniStudents;
 
   const handleSave = async (form) => {
     if (modal && modal._id) await updateStudent(modal._id, form);
@@ -148,10 +157,11 @@ export default function StudentsTab() {
         <Button variant="primary" size="sm" onClick={() => setModal('add')}>+ Add Student</Button>
       </div>
 
-      {/* Sub-tabs: Active | Alumni */}
-      <div className="flex gap-1 p-1 bg-slate-100 rounded-xl w-fit">
+      {/* Sub-tabs: Active | Unallotted | Alumni */}
+      <div className="flex gap-1 p-1 bg-slate-100 rounded-xl w-fit flex-wrap">
         {[
-          { id: 'active', label: `Active (${students.filter(s=>s.active).length})` },
+          { id: 'active', label: `Active (${students.filter(s=>s.active && !!s.roomNo).length})` },
+          { id: 'unallotted', label: `Unallotted (${students.filter(s=>s.active && !s.roomNo).length})` },
           { id: 'alumni', label: `Passed Out (${students.filter(s=>!s.active).length})` },
         ].map((t) => (
           <button key={t.id} onClick={() => setSubTab(t.id)}
@@ -168,9 +178,10 @@ export default function StudentsTab() {
       <StudentTable
         rows={displayed}
         loading={loading}
-        onEdit={subTab === 'active' ? (s) => setModal(s) : null}
-        onDeactivate={subTab === 'active' ? handleDeactivate : null}
+        onEdit={(subTab === 'active' || subTab === 'unallotted') ? (s) => setModal(s) : null}
+        onDeactivate={(subTab === 'active' || subTab === 'unallotted') ? handleDeactivate : null}
         onHistory={setHistoryStudent}
+        onAssignRoom={setAssignRoomModal}
       />
 
       {/* Modals */}
@@ -185,6 +196,13 @@ export default function StudentsTab() {
         <StudentHistoryModal
           student={historyStudent}
           onClose={() => setHistoryStudent(null)}
+        />
+      )}
+      {assignRoomModal && (
+        <AssignRoomModal
+          student={assignRoomModal}
+          onSave={() => { setAssignRoomModal(null); load(); }}
+          onClose={() => setAssignRoomModal(null)}
         />
       )}
     </div>

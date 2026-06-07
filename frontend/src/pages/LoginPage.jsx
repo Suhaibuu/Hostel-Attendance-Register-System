@@ -1,142 +1,194 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import Card from '../components/ui/Card';
-import Button from '../components/ui/Button';
+import Spinner from '../components/ui/Spinner';
 
 export default function LoginPage() {
-  const { login, user } = useAuth();
+  const { login, studentLogin, user } = useAuth();
   const navigate = useNavigate();
+  const [tab, setTab] = useState('staff'); // 'staff' | 'student'
 
-  const [email, setEmail] = useState('');
+  // Staff form
+  const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+
+  // Student form
+  const [rollNo, setRollNo]           = useState('');
+  const [stuPassword, setStuPassword] = useState('');
+
   const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState('');
 
-  // If already logged in, redirect
-  if (user) {
-    navigate('/warden', { replace: true });
-    return null;
-  }
+  // Already logged in → redirect
+  useEffect(() => {
+    if (!user) return;
+    if (user.role === 'admin')   navigate('/admin', { replace: true });
+    else if (user.role === 'student') navigate('/student', { replace: true });
+    else navigate('/warden', { replace: true });
+  }, [user, navigate]);
 
-  const handleSubmit = async (e) => {
+  const handleStaffLogin = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
-
     try {
-      await login(email, password);
-      navigate('/warden', { replace: true });
+      const data = await login(email, password);
+      if (data.user.role === 'admin') navigate('/admin');
+      else navigate('/warden');
     } catch (err) {
-      const msg =
-        err?.response?.data?.message || 'Login failed. Please try again.';
-      setError(msg);
+      setError(err.message || 'Login failed');
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-8"
-         style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%)' }}>
+  const handleStudentLogin = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      await studentLogin(rollNo, stuPassword);
+      navigate('/student');
+    } catch (err) {
+      setError(err.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  const inputCls =
+    'w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white';
+
+  return (
+    <div
+      className="min-h-screen flex items-center justify-center p-4"
+      style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%)' }}
+    >
       <div className="w-full max-w-sm">
-        <Card padding="lg">
-          {/* ── Header ── */}
-          <div className="text-center mb-6">
-            <span className="text-5xl block mb-3" role="img" aria-label="School">
-              🏫
-            </span>
-            <h1 className="text-2xl font-bold text-slate-800 leading-tight">
-              HostelTrack
-            </h1>
-            <p className="text-sm text-slate-500 mt-1">
-              Hostel Attendance System
-            </p>
-            <p className="text-xs text-blue-600 font-medium mt-1">
-              GEC Wayanad
-            </p>
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="text-5xl mb-3">🏫</div>
+          <h1 className="text-2xl font-bold text-slate-800">HostelTrack</h1>
+          <p className="text-sm text-slate-500 mt-1">Hostel Attendance System</p>
+          <p className="text-xs text-blue-600 font-medium mt-0.5">GEC Wayanad</p>
+        </div>
+
+        {/* Card */}
+        <div className="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
+          {/* Tab bar */}
+          <div className="flex border-b border-slate-100">
+            {[
+              { id: 'staff',   icon: '🔐', label: 'Staff Login' },
+              { id: 'student', icon: '🎓', label: 'Student Login' },
+            ].map((t) => (
+              <button
+                key={t.id}
+                onClick={() => { setTab(t.id); setError(''); }}
+                className={[
+                  'flex-1 py-3 text-sm font-medium transition-all cursor-pointer',
+                  tab === t.id
+                    ? 'bg-white text-blue-600 border-b-2 border-blue-500'
+                    : 'text-slate-500 hover:text-slate-700 bg-slate-50',
+                ].join(' ')}
+              >
+                {t.icon} {t.label}
+              </button>
+            ))}
           </div>
 
-          {/* ── Divider ── */}
-          <div className="border-t border-[var(--color-border)] mb-6" />
+          <div className="p-6">
+            {/* ── Staff Login ── */}
+            {tab === 'staff' && (
+              <form onSubmit={handleStaffLogin} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Email</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="admin@hostel.com"
+                    className={inputCls}
+                    required
+                    disabled={loading}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className={inputCls}
+                    required
+                    disabled={loading}
+                  />
+                </div>
+                {error && (
+                  <p className="text-sm text-red-500 text-center flex items-center justify-center gap-1">
+                    ⚠️ {error}
+                  </p>
+                )}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+                >
+                  {loading ? <><Spinner size="sm" /> Loading...</> : 'Sign In'}
+                </button>
+              </form>
+            )}
 
-          {/* ── Form ── */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email */}
-            <div>
-              <label
-                htmlFor="login-email"
-                className="block text-sm font-medium text-slate-700 mb-1.5"
-              >
-                Email
-              </label>
-              <input
-                id="login-email"
-                type="email"
-                required
-                placeholder="warden@hostel.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={loading}
-                className="w-full border border-[var(--color-border)] rounded-xl px-4 py-3
-                           text-sm text-slate-800 placeholder-slate-400
-                           focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-                           outline-none transition-all duration-200
-                           disabled:opacity-50 disabled:cursor-not-allowed"
-              />
-            </div>
+            {/* ── Student Login ── */}
+            {tab === 'student' && (
+              <form onSubmit={handleStudentLogin} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">College ID (Roll No)</label>
+                  <input
+                    type="text"
+                    value={rollNo}
+                    onChange={(e) => setRollNo(e.target.value.toUpperCase())}
+                    placeholder="CST221"
+                    className={`${inputCls} uppercase`}
+                    required
+                    disabled={loading}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
+                  <input
+                    type="password"
+                    value={stuPassword}
+                    onChange={(e) => setStuPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className={inputCls}
+                    required
+                    disabled={loading}
+                  />
+                </div>
+                <p className="text-xs text-slate-400 text-center">
+                  Default password is your Roll No in lowercase
+                </p>
+                {error && (
+                  <p className="text-sm text-red-500 text-center flex items-center justify-center gap-1">
+                    ⚠️ {error}
+                  </p>
+                )}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+                >
+                  {loading ? <><Spinner size="sm" /> Loading...</> : 'View My Profile'}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
 
-            {/* Password */}
-            <div>
-              <label
-                htmlFor="login-password"
-                className="block text-sm font-medium text-slate-700 mb-1.5"
-              >
-                Password
-              </label>
-              <input
-                id="login-password"
-                type="password"
-                required
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={loading}
-                className="w-full border border-[var(--color-border)] rounded-xl px-4 py-3
-                           text-sm text-slate-800 placeholder-slate-400
-                           focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-                           outline-none transition-all duration-200
-                           disabled:opacity-50 disabled:cursor-not-allowed"
-              />
-            </div>
-
-            {/* Submit */}
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              fullWidth
-              loading={loading}
-            >
-              Sign In
-            </Button>
-          </form>
-
-          {/* ── Error ── */}
-          {error && (
-            <div className="flex items-center gap-2 mt-4 px-3 py-2.5 rounded-xl
-                            bg-[var(--color-danger-light)] text-[var(--color-danger)] text-sm">
-              <span className="shrink-0">⚠️</span>
-              <span>{error}</span>
-            </div>
-          )}
-
-          {/* ── Footer ── */}
-          <p className="text-xs text-slate-400 text-center mt-6">
-            Contact admin to get your credentials
-          </p>
-        </Card>
+        <p className="text-center text-xs text-slate-400 mt-6">
+          HostelTrack © {new Date().getFullYear()}
+        </p>
       </div>
     </div>
   );

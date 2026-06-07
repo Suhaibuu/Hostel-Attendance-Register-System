@@ -10,20 +10,31 @@ export function AuthProvider({ children }) {
   // Restore session from localStorage on mount
   useEffect(() => {
     const savedToken = localStorage.getItem('ht_token');
-    const savedUser = localStorage.getItem('ht_user');
+    const savedUser  = localStorage.getItem('ht_user');
     if (savedToken && savedUser) {
       setToken(savedToken);
       setUser(JSON.parse(savedUser));
     }
   }, []);
 
-  const login = async (email, password) => {
-    const data = await authApi.login(email, password);
+  const _persist = (data) => {
     localStorage.setItem('ht_token', data.token);
     localStorage.setItem('ht_user', JSON.stringify(data.user));
     setToken(data.token);
     setUser(data.user);
     return data;
+  };
+
+  // Staff login (email + password)
+  const login = async (email, password) => {
+    const data = await authApi.login(email, password);
+    return _persist(data);
+  };
+
+  // Student login (roll no + password)
+  const studentLogin = async (rollNo, password) => {
+    const data = await authApi.studentLogin(rollNo, password);
+    return _persist(data);
   };
 
   const logout = () => {
@@ -33,10 +44,12 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  const isAdmin = user?.role === 'admin';
+  const isAdmin   = user?.role === 'admin';
+  const isStudent = user?.role === 'student';
+  const isStaff   = user?.role === 'admin' || user?.role === 'warden';
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, isAdmin }}>
+    <AuthContext.Provider value={{ user, token, login, studentLogin, logout, isAdmin, isStudent, isStaff }}>
       {children}
     </AuthContext.Provider>
   );

@@ -15,8 +15,8 @@ const studentSchema = new mongoose.Schema({
   },
   roomNo: {
     type: String,
-    required: true,
     trim: true,
+    default: null,   // null = not yet allotted
   },
   department: {
     type: String,
@@ -31,6 +31,10 @@ const studentSchema = new mongoose.Schema({
     type: Number,
     default: 120,
   },
+  // Student login — default password is their roll no (lowercase)
+  passwordHash: {
+    type: String,
+  },
   active: {
     type: Boolean,
     default: true,
@@ -42,3 +46,4 @@ const studentSchema = new mongoose.Schema({
 });
 
 module.exports = mongoose.model('Student', studentSchema);
+

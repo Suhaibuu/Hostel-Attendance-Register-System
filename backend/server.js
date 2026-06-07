@@ -10,10 +10,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// --------------- Home Route ---------------
-app.get('/', (req, res) => {
-  res.send("Hostel Attendance System Running");
-});
 
 // --------------- Health Check ---------------
 app.get('/api/health', (_req, res) => {

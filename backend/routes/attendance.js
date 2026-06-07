@@ -148,7 +148,6 @@ router.get('/report', async (req, res) => {
     const report = students.map((s) => {
       const presentDays = presentMap[s._id.toString()] || 0;
       const absentDays = totalDays - presentDays;
-      const bill = presentDays * s.dailyRate;
 
       return {
         studentId: s._id,
@@ -158,8 +157,6 @@ router.get('/report', async (req, res) => {
         presentDays,
         absentDays,
         totalDays,
-        dailyRate: s.dailyRate,
-        bill,
       };
     });
 

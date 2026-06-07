@@ -8,8 +8,8 @@ export default function StudentModal({ student, onSave, onClose }) {
     name: student?.name || '',
     rollNo: student?.rollNo || '',
     roomNo: student?.roomNo || '',
-    department: student?.department || '',
-    messPlan: student?.messPlan || 'full',
+    department: student?.department || 'Computer Science (CSE)',
+    level: student?.level || 'UG',
   });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -20,7 +20,6 @@ export default function StudentModal({ student, onSave, onClose }) {
     const e = {};
     if (!form.name.trim()) e.name = 'Name is required';
     if (!form.rollNo.trim()) e.rollNo = 'Roll No is required';
-    if (!form.roomNo.trim()) e.roomNo = 'Room No is required';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -51,27 +50,47 @@ export default function StudentModal({ student, onSave, onClose }) {
             {isEdit ? 'Edit Student' : 'Add Student'}
           </h2>
           <form onSubmit={handleSubmit} className="space-y-3">
-            {[
-              ['name', 'Name', 'text'],
-              ['rollNo', 'Roll No', 'text'],
-              ['roomNo', 'Room No', 'text'],
-              ['department', 'Department', 'text'],
-            ].map(([key, label, type]) => (
-              <div key={key}>
-                <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
-                <input type={type} value={form[key]} onChange={(e) => set(key, e.target.value)}
-                       className={inputCls} disabled={isEdit && key === 'rollNo'} />
-                {errors[key] && <p className="text-xs text-red-500 mt-1">{errors[key]}</p>}
-              </div>
-            ))}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Mess Plan</label>
-              <select value={form.messPlan} onChange={(e) => set('messPlan', e.target.value)}
+              <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
+              <input type="text" value={form.name} onChange={(e) => set('name', e.target.value)}
+                     className={inputCls} required />
+              {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Roll No</label>
+              <input type="text" value={form.rollNo} onChange={(e) => set('rollNo', e.target.value.toUpperCase())}
+                     className={`${inputCls} uppercase`} disabled={isEdit} required />
+              {errors.rollNo && <p className="text-xs text-red-500 mt-1">{errors.rollNo}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Room No (Optional)</label>
+              <input type="text" value={form.roomNo} onChange={(e) => set('roomNo', e.target.value)}
+                     className={inputCls} />
+              {errors.roomNo && <p className="text-xs text-red-500 mt-1">{errors.roomNo}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Department</label>
+              <select value={form.department} onChange={(e) => set('department', e.target.value)}
                       className={inputCls}>
-                <option value="full">Full</option>
-                <option value="half">Half</option>
+                <option value="Computer Science (CSE)">Computer Science (CSE)</option>
+                <option value="Electronics and Communication(ECE)">Electronics and Communication(ECE)</option>
+                <option value="Mechanical(ME)">Mechanical(ME)</option>
+                <option value="Electrical and Electronics(EEE)">Electrical and Electronics(EEE)</option>
               </select>
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Program Level</label>
+              <select value={form.level} onChange={(e) => set('level', e.target.value)}
+                      className={inputCls}>
+                <option value="UG">Undergraduate (UG)</option>
+                <option value="PG">Postgraduate (PG)</option>
+              </select>
+            </div>
+
             {errors._form && (
               <p className="text-sm text-red-500 text-center">{errors._form}</p>
             )}

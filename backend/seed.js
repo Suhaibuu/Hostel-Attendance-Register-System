@@ -43,7 +43,7 @@ async function seed() {
   for (const s of students) {
     const exists = await Student.findOne({ rollNo: s.rollNo });
     if (!exists) {
-      await Student.create({ ...s, messPlan: 'full', dailyRate: 120 });
+      await Student.create({ ...s, level: 'UG' });
       studentCount++;
     }
   }

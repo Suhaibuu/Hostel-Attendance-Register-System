@@ -58,12 +58,11 @@ export default function AttendanceTab() {
       {data.length > 0 && (
         <>
           {/* Summary */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {[
               ['👥', 'Total Students', data.length],
               ['✅', 'Present Days', totalPresent.toLocaleString()],
               ['📊', 'Avg Attendance', `${avgPct}%`],
-              ['⚠️', 'At Risk (<75%)', atRisk],
             ].map(([icon, label, val]) => (
               <Card padding="sm" key={label}>
                 <div className="flex items-center gap-3">
@@ -96,10 +95,7 @@ export default function AttendanceTab() {
                   {sorted.map((r, i) => {
                     const p = pct(r);
                     return (
-                      <tr key={r.studentId} className={[
-                        i % 2 ? 'bg-slate-50/50' : '',
-                        p < 75 ? 'bg-red-50/40' : '',
-                      ].join(' ')}>
+                      <tr key={r.studentId} className={i % 2 ? 'bg-slate-50/50' : ''}>
                         <td className="py-3 text-slate-600">{r.roomNo}</td>
                         <td className="py-3 font-medium text-slate-800">{r.name}</td>
                         <td className="py-3 text-slate-600">{r.rollNo}</td>

@@ -78,8 +78,8 @@ export default function StudentProfilePage() {
   const pct = monthData?.totalDays
     ? Math.round((monthData.presentDays / monthData.totalDays) * 100)
     : 0;
-  const pctColor = pct >= 75 ? 'bg-emerald-500' : pct >= 50 ? 'bg-amber-400' : 'bg-red-500';
-  const pctText  = pct >= 75 ? 'text-emerald-600' : pct >= 50 ? 'text-amber-600' : 'text-red-600';
+  const pctColor = 'bg-blue-500';
+  const pctText  = 'text-blue-600';
 
   return (
     <div className="min-h-screen bg-[var(--color-surface)]">
@@ -183,11 +183,6 @@ export default function StudentProfilePage() {
                             style={{ width: `${pct}%` }}
                           />
                         </div>
-                        {pct < 75 && (
-                          <p className="text-xs text-red-500 mt-1.5">
-                            ⚠️ Below 75% — you need at least {Math.ceil(monthData.totalDays * 0.75 - monthData.presentDays)} more days present
-                          </p>
-                        )}
                       </div>
                     )}
 

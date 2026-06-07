@@ -5,12 +5,10 @@ import TopBar from '../components/layout/TopBar';
 import Button from '../components/ui/Button';
 import StudentsTab from '../components/admin/StudentsTab';
 import AttendanceTab from '../components/admin/AttendanceTab';
-import BillsTab from '../components/admin/BillsTab';
 
 const tabs = [
   { id: 'students', label: 'Students', icon: '👥' },
   { id: 'attendance', label: 'Attendance', icon: '📋' },
-  { id: 'bills', label: 'Mess Bills', icon: '💰' },
 ];
 
 export default function AdminPage() {
@@ -54,7 +52,6 @@ export default function AdminPage() {
         {/* Tab content */}
         {activeTab === 'students' && <StudentsTab />}
         {activeTab === 'attendance' && <AttendanceTab />}
-        {activeTab === 'bills' && <BillsTab />}
       </main>
     </PageWrapper>
   );

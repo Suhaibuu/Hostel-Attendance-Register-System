@@ -43,7 +43,7 @@ function StudentRow({ s, i, onEdit, onDeactivate, onHistory, onAssignRoom, onDel
         )}
       </td>
       <td className="py-3 text-slate-600 hidden md:table-cell">{s.department || '—'}</td>
-      <td className="py-3 hidden md:table-cell capitalize">{s.messPlan}</td>
+      <td className="py-3 text-slate-600 hidden md:table-cell">{s.level || 'UG'}</td>
       <td className="py-3">
         <Badge variant={s.active ? 'present' : 'absent'}>
           {s.active ? 'Active' : 'Passed Out'}
@@ -90,8 +90,7 @@ function StudentTable({ rows, loading, onEdit, onDeactivate, onHistory, onAssign
                 <th className="pb-3">Roll No</th>
                 <th className="pb-3">Room</th>
                 <th className="pb-3 hidden md:table-cell">Dept</th>
-                <th className="pb-3 hidden md:table-cell">Mess</th>
-                <th className="pb-3 hidden md:table-cell">Rate</th>
+                <th className="pb-3 hidden md:table-cell">Level</th>
                 <th className="pb-3">Status</th>
                 <th className="pb-3 text-right pr-3">Actions</th>
               </tr>

@@ -22,14 +22,10 @@ const studentSchema = new mongoose.Schema({
     type: String,
     trim: true,
   },
-  messPlan: {
+  level: {
     type: String,
-    enum: ['full', 'half'],
-    default: 'full',
-  },
-  dailyRate: {
-    type: Number,
-    default: 120,
+    enum: ['UG', 'PG'],
+    default: 'UG',
   },
   // Student login — default password is their roll no (lowercase)
   passwordHash: {

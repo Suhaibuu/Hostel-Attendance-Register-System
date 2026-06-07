@@ -33,7 +33,13 @@ const getInitials = (name) => {
 // ── Add Student Modal (warden-accessible) ───────────────
 
 function AddStudentModal({ onSave, onClose }) {
-  const [form, setForm] = useState({ name: '', rollNo: '', roomNo: '', department: '', messPlan: 'full' });
+  const [form, setForm] = useState({
+    name: '',
+    rollNo: '',
+    roomNo: '',
+    department: 'Computer Science (CSE)',
+    level: 'UG',
+  });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
@@ -42,7 +48,6 @@ function AddStudentModal({ onSave, onClose }) {
     const e = {};
     if (!form.name.trim()) e.name = 'Required';
     if (!form.rollNo.trim()) e.rollNo = 'Required';
-    if (!form.roomNo.trim()) e.roomNo = 'Required';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -68,20 +73,42 @@ function AddStudentModal({ onSave, onClose }) {
       <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl p-6" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-lg font-bold text-slate-800 mb-4">Add New Student</h2>
         <form onSubmit={handleSubmit} className="space-y-3">
-          {[['name','Name','text'],['rollNo','Roll No','text'],['roomNo','Room No','text'],['department','Department','text']].map(([k, label, type]) => (
-            <div key={k}>
-              <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
-              <input type={type} value={form[k]} onChange={(e) => set(k, e.target.value)} className={inp} />
-              {errors[k] && <p className="text-xs text-red-500 mt-1">{errors[k]}</p>}
-            </div>
-          ))}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Mess Plan</label>
-            <select value={form.messPlan} onChange={(e) => set('messPlan', e.target.value)} className={inp}>
-              <option value="full">Full</option>
-              <option value="half">Half</option>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
+            <input type="text" value={form.name} onChange={(e) => set('name', e.target.value)} className={inp} required />
+            {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Roll No</label>
+            <input type="text" value={form.rollNo} onChange={(e) => set('rollNo', e.target.value.toUpperCase())} className={`${inp} uppercase`} required />
+            {errors.rollNo && <p className="text-xs text-red-500 mt-1">{errors.rollNo}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Room No (Optional)</label>
+            <input type="text" value={form.roomNo} onChange={(e) => set('roomNo', e.target.value)} className={inp} />
+            {errors.roomNo && <p className="text-xs text-red-500 mt-1">{errors.roomNo}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Department</label>
+            <select value={form.department} onChange={(e) => set('department', e.target.value)} className={inp}>
+              <option value="Computer Science (CSE)">Computer Science (CSE)</option>
+              <option value="Electronics and Communication(ECE)">Electronics and Communication(ECE)</option>
+              <option value="Mechanical(ME)">Mechanical(ME)</option>
+              <option value="Electrical and Electronics(EEE)">Electrical and Electronics(EEE)</option>
             </select>
           </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Program Level</label>
+            <select value={form.level} onChange={(e) => set('level', e.target.value)} className={inp}>
+              <option value="UG">Undergraduate (UG)</option>
+              <option value="PG">Postgraduate (PG)</option>
+            </select>
+          </div>
+
           {errors._form && <p className="text-sm text-red-500 text-center">{errors._form}</p>}
           <div className="flex gap-2 pt-2">
             <Button variant="ghost" onClick={onClose} fullWidth type="button">Cancel</Button>

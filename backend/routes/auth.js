@@ -17,7 +17,7 @@ const sign = (payload) =>
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role } = req.body || {};
     const existing = await User.findOne({ email: email.toLowerCase() });
     if (existing) return res.status(400).json({ message: 'Email already in use' });
 
@@ -37,7 +37,7 @@ router.post('/register', async (req, res) => {
 // POST /api/auth/login  (staff)
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password } = req.body || {};
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) return res.status(401).json({ message: 'Invalid credentials' });
 
@@ -62,22 +62,24 @@ router.post('/login', async (req, res) => {
 // Students log in with their Roll No + password (default = roll no lowercase)
 router.post('/student-login', async (req, res) => {
   try {
-    const { rollNo, password } = req.body;
+    const { rollNo, password } = req.body || {};
     if (!rollNo || !password)
       return res.status(400).json({ message: 'Roll No and password are required' });
 
     const student = await Student.findOne({ rollNo: rollNo.trim().toUpperCase() });
     if (!student) return res.status(401).json({ message: 'Invalid credentials' });
 
-    // If no passwordHash yet, accept roll no (lowercase) as default password
+    // If no passwordHash yet or first login, accept roll no (case-insensitive) as default password
     let isMatch = false;
     if (student.passwordHash) {
       isMatch = await bcrypt.compare(password, student.passwordHash);
+      if (!isMatch && password.toLowerCase() === student.rollNo.toLowerCase()) {
+        isMatch = true;
+      }
     } else {
-      // Default password = roll no lowercase — set it permanently on first use
-      isMatch = password === student.rollNo.toLowerCase();
+      isMatch = password.toLowerCase() === student.rollNo.toLowerCase();
       if (isMatch) {
-        student.passwordHash = await bcrypt.hash(password, 10);
+        student.passwordHash = await bcrypt.hash(password.toLowerCase(), 10);
         await student.save();
       }
     }

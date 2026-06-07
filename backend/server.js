@@ -24,14 +24,11 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/students', require('./routes/students'));
 app.use('/api/attendance', require('./routes/attendance'));
 
-// --------------- Serve Frontend ---------------
-app.use(express.static(path.join(__dirname, '../frontend/dist')));
+app.use(express.static(path.join(__dirname, 'dist')));
 
-// React/Vite frontend fallback
 app.use((req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
-
 // --------------- Database & Server Start ---------------
 const PORT = process.env.PORT || 5000;
 

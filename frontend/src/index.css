@@ -1,74 +1,113 @@
 @import "tailwindcss";
 
-/* ── Design Tokens ── */
 @theme {
-  --color-brand-50:  #f0f7ff;
-  --color-brand-100: #e0effe;
-  --color-brand-500: #3b82f6;
-  --color-brand-600: #2563eb;
-  --color-brand-700: #1d4ed8;
-  --color-brand-900: #1e3a5f;
-  --color-surface:   #f8fafc;
+  --font-sans: "Outfit", "Inter", system-ui, sans-serif;
+  
+  --color-primary-50: #f5f3ff;
+  --color-primary-100: #ede9fe;
+  --color-primary-200: #ddd6fe;
+  --color-primary-500: #8b5cf6;
+  --color-primary-600: #7c3aed;
+  --color-primary-700: #6d28d9;
+  --color-primary-900: #4c1d95;
+  
+  --color-surface-base: #fafafa;
+  --color-surface-panel: #ffffff;
+  --color-surface-hover: #f4f4f5;
+  
+  --shadow-premium: 0 12px 30px -10px rgba(0, 0, 0, 0.06), 0 2px 8px -2px rgba(0, 0, 0, 0.02);
+  --shadow-glow: 0 20px 40px -15px rgba(124, 58, 237, 0.15), 0 1px 10px rgba(124, 58, 237, 0.05);
+  --shadow-inset-soft: inset 0 2px 4px 0 rgba(0, 0, 0, 0.03);
 }
 
 :root {
-  --color-primary: #2563eb;
-  --color-primary-dark: #1d4ed8;
-  --color-primary-light: #eff6ff;
-  --color-success: #16a34a;
-  --color-success-light: #f0fdf4;
-  --color-danger: #dc2626;
+  --color-primary: #7c3aed;
+  --color-primary-dark: #6d28d9;
+  --color-primary-light: #ede9fe;
+  
+  --color-success: #10b981;
+  --color-success-light: #ecfdf5;
+  --color-danger: #ef4444;
   --color-danger-light: #fef2f2;
-  --color-warning: #d97706;
+  --color-warning: #f59e0b;
   --color-warning-light: #fffbeb;
+  
   --color-surface: #f8fafc;
   --color-card: #ffffff;
   --color-text-primary: #0f172a;
-  --color-text-secondary: #64748b;
-  --color-border: #e2e8f0;
+  --color-text-secondary: #475569;
+  --color-border: #f1f5f9;
 }
 
-/* ── Base Reset ── */
-*, *::before, *::after {
-  box-sizing: border-box;
-}
-
+/* ── Custom Utilities & Global Styles ── */
 body {
   margin: 0;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
   color: var(--color-text-primary);
-  background: var(--color-surface);
+  background-color: var(--color-surface-base);
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  background-image: 
+    radial-gradient(at 0% 0%, hsla(253,16%,7%,0) 0, transparent 50%), 
+    radial-gradient(at 50% 0%, hsla(225,39%,30%,0.03) 0, transparent 50%), 
+    radial-gradient(at 100% 0%, hsla(339,49%,30%,0.02) 0, transparent 50%);
+  background-attachment: fixed;
 }
 
-/* ── Toast slide-up animation ── */
-@keyframes toast-slide-up {
-  from {
-    opacity: 0;
-    transform: translateX(-50%) translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
+/* Custom Scrollbar for Handcrafted feel */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
-@keyframes toast-slide-down {
-  from {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateX(-50%) translateY(20px);
-  }
+/* Subtle grain/noise pattern overlay */
+.grain-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  content: "";
+  opacity: 0.015;
+  pointer-events: none;
+  z-index: 9999;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3 PreservingAspectRatio='none'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
 }
 
-.toast-enter {
-  animation: toast-slide-up 0.3s ease-out forwards;
+/* Modern Glassmorphic panel */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
 }
 
-.toast-exit {
-  animation: toast-slide-down 0.25s ease-in forwards;
+/* Custom transitions */
+.transition-smooth {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Custom badge styling */
+.badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* Handcrafted irregular elements */
+.organic-card-1 {
+  border-radius: 24px 12px 20px 16px;
+}
+
+.organic-card-2 {
+  border-radius: 12px 24px 16px 20px;
 }

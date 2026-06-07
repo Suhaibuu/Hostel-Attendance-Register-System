@@ -7,13 +7,20 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
 
-  // Restore session from localStorage on mount
   useEffect(() => {
     const savedToken = localStorage.getItem('ht_token');
     const savedUser  = localStorage.getItem('ht_user');
     if (savedToken && savedUser) {
-      setToken(savedToken);
-      setUser(JSON.parse(savedUser));
+      try {
+        const u = JSON.parse(savedUser);
+        if (u) {
+          setToken(savedToken);
+          setUser(u);
+        }
+      } catch (e) {
+        localStorage.removeItem('ht_token');
+        localStorage.removeItem('ht_user');
+      }
     }
   }, []);
 

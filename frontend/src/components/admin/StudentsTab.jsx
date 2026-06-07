@@ -6,98 +6,157 @@ import Button from '../ui/Button';
 import StudentModal from './StudentModal';
 import StudentHistoryModal from './StudentHistoryModal';
 import AssignRoomModal from './AssignRoomModal';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Search, SlidersHorizontal, Plus, Users, UserMinus, UserCheck, 
+  Trash2, Edit3, CalendarDays, KeyRound, MapPin, Layers 
+} from 'lucide-react';
 
-const avatarColors = ['bg-blue-500','bg-emerald-500','bg-purple-500','bg-orange-500','bg-pink-500'];
-const getColor = (n) => avatarColors[(n||'A').charCodeAt(0) % avatarColors.length];
+const avatarColors = ['bg-indigo-500', 'bg-emerald-500', 'bg-violet-500', 'bg-amber-500', 'bg-pink-500'];
+const getColor = (n) => avatarColors[(n || 'A').charCodeAt(0) % avatarColors.length];
 const initials = (n) => {
   if (!n) return '??';
   const p = n.trim().split(/\s+/);
-  return p.length === 1 ? p[0].slice(0,2).toUpperCase() : (p[0][0]+p[p.length-1][0]).toUpperCase();
+  return p.length === 1 ? p[0].slice(0, 2).toUpperCase() : (p[0][0] + p[p.length - 1][0]).toUpperCase();
 };
 
-// ── Shared student row ────────────────────────────────────
+function StudentRow({ s, idx, onEdit, onDeactivate, onHistory, onAssignRoom, onDelete }) {
+  const isEven = idx % 2 === 0;
 
-function StudentRow({ s, i, onEdit, onDeactivate, onHistory, onAssignRoom, onDelete }) {
   return (
-    <tr className={i % 2 ? 'bg-slate-50/50' : ''}>
-      <td className="py-3 pl-3">
-        <div className="flex items-center gap-2.5">
-          <div className={`h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 ${getColor(s.name)}`}>
+    <motion.tr 
+      initial={{ opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2, delay: Math.min(idx * 0.03, 0.3) }}
+      className={`border-b border-slate-100 hover:bg-slate-50/50 transition-smooth group`}
+    >
+      <td className="py-4 pl-4">
+        <div className="flex items-center gap-3">
+          <div className={`h-9 w-9 rounded-2xl flex items-center justify-center text-white text-xs font-black shrink-0 shadow-sm ${getColor(s.name)}`}>
             {initials(s.name)}
           </div>
-          <button
-            onClick={() => onHistory(s)}
-            className="font-medium text-slate-800 hover:text-[var(--color-primary)] transition-colors truncate max-w-[140px] cursor-pointer text-left"
-            title="View attendance history"
-          >
-            {s.name}
-          </button>
+          <div className="min-w-0">
+            <button
+              onClick={() => onHistory(s)}
+              className="font-bold text-slate-800 hover:text-primary-600 transition-colors truncate max-w-[160px] cursor-pointer text-left block text-sm"
+              title="View attendance registry"
+            >
+              {s.name}
+            </button>
+            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">{s.rollNo}</span>
+          </div>
         </div>
       </td>
-      <td className="py-3 text-slate-600">{s.rollNo}</td>
-      <td className="py-3 text-slate-600">
+      <td className="py-4">
         {s.roomNo ? (
-          s.roomNo
+          <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200/40 px-2 py-0.5 rounded-lg">
+            <MapPin className="w-3 h-3 text-slate-400" />
+            {s.roomNo}
+          </span>
         ) : (
-          <Button variant="ghost" size="sm" onClick={() => onAssignRoom(s)} className="text-amber-600 border-amber-200">Assign Room</Button>
+          <motion.button 
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => onAssignRoom(s)} 
+            className="text-[10px] font-black uppercase tracking-wider text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-2.5 py-1.5 cursor-pointer transition-smooth hover:bg-amber-100"
+          >
+            Assign Room
+          </motion.button>
         )}
       </td>
-      <td className="py-3 text-slate-600 hidden md:table-cell">{s.department || '—'}</td>
-      <td className="py-3 text-slate-600 hidden md:table-cell">{s.level || 'UG'}</td>
-      <td className="py-3">
+      <td className="py-4 text-xs font-bold text-slate-600 hidden md:table-cell">{s.department || '—'}</td>
+      <td className="py-4 text-xs font-bold text-slate-600 hidden md:table-cell">
+        <span className="px-2 py-0.5 bg-slate-100/80 rounded border border-slate-200/10">{s.level || 'UG'}</span>
+      </td>
+      <td className="py-4">
         <Badge variant={s.active ? 'present' : 'absent'}>
           {s.active ? 'Active' : 'Passed Out'}
         </Badge>
       </td>
-      <td className="py-3 pr-3 text-right">
-        <div className="flex gap-1 justify-end">
-          <Button variant="ghost" size="sm" onClick={() => onHistory(s)} title="View history">📋</Button>
-          {onEdit && <Button variant="ghost" size="sm" onClick={() => onEdit(s)}>Edit</Button>}
-          {onDeactivate && s.active && (
-            <Button variant="danger" size="sm" onClick={() => onDeactivate(s._id)}>Passed Out</Button>
+      <td className="py-4 pr-4 text-right">
+        <div className="flex gap-1.5 justify-end opacity-90 group-hover:opacity-100 transition-opacity">
+          <button 
+            onClick={() => onHistory(s)} 
+            title="Registry History"
+            className="p-1.5 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg text-slate-500 border border-slate-200/20 cursor-pointer transition-smooth"
+          >
+            <CalendarDays className="w-3.5 h-3.5" />
+          </button>
+          
+          {onEdit && (
+            <button 
+              onClick={() => onEdit(s)}
+              title="Edit Profile"
+              className="p-1.5 bg-slate-100 hover:bg-primary-50 hover:text-primary-600 rounded-lg text-slate-500 border border-slate-200/20 cursor-pointer transition-smooth"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+            </button>
           )}
+
+          {onDeactivate && s.active && (
+            <button 
+              onClick={() => onDeactivate(s._id)}
+              title="Mark Passed Out"
+              className="px-2.5 py-1 bg-slate-100 hover:bg-amber-50 hover:text-amber-600 rounded-lg text-slate-500 border border-slate-200/20 text-[10px] font-black uppercase tracking-wider cursor-pointer transition-smooth"
+            >
+              Pass Out
+            </button>
+          )}
+
           {onDelete && (
-            <Button variant="ghost" size="sm" onClick={() => onDelete(s)} title="Delete permanently" className="text-red-600 border border-red-200 hover:bg-red-50">Delete</Button>
+            <button 
+              onClick={() => onDelete(s)} 
+              title="Delete Resident"
+              className="p-1.5 bg-slate-100 hover:bg-red-50 hover:text-red-600 rounded-lg text-slate-500 border border-slate-200/20 cursor-pointer transition-smooth"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
           )}
         </div>
       </td>
-    </tr>
+    </motion.tr>
   );
 }
 
-// ── Shared table shell ────────────────────────────────────
-
 function StudentTable({ rows, loading, onEdit, onDeactivate, onHistory, onAssignRoom, onDelete }) {
   return (
-    <Card padding="sm">
+    <Card padding="none" className="overflow-hidden border border-slate-200/50 rounded-3xl shadow-premium bg-white">
       {loading ? (
-        <div className="space-y-3">
-          {[...Array(5)].map((_,i) => (
-            <div key={i} className="h-12 bg-slate-100 rounded-xl animate-pulse" />
+        <div className="p-6 space-y-4">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-14 bg-slate-50 rounded-2xl animate-pulse border border-slate-100" />
           ))}
         </div>
       ) : rows.length === 0 ? (
-        <div className="text-center py-12">
-          <span className="text-4xl block mb-2">🎓</span>
-          <p className="text-sm text-slate-400">No students found</p>
+        <div className="text-center py-16 space-y-2">
+          <Users className="w-10 h-10 text-slate-300 mx-auto" />
+          <p className="text-sm text-slate-400 font-bold">No active resident profiles found</p>
         </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-xs text-slate-500 border-b border-[var(--color-border)]">
-                <th className="pb-3 pl-3">Name</th>
-                <th className="pb-3">Roll No</th>
-                <th className="pb-3">Room</th>
-                <th className="pb-3 hidden md:table-cell">Dept</th>
-                <th className="pb-3 hidden md:table-cell">Level</th>
-                <th className="pb-3">Status</th>
-                <th className="pb-3 text-right pr-3">Actions</th>
+              <tr className="text-left text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 bg-slate-50/50">
+                <th className="py-4 pl-4">Resident</th>
+                <th className="py-4">Room No</th>
+                <th className="py-4 hidden md:table-cell">Dept</th>
+                <th className="py-4 hidden md:table-cell">Level</th>
+                <th className="py-4">Status</th>
+                <th className="py-4 text-right pr-4">Operations</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((s, i) => (
-                <StudentRow key={s._id} s={s} i={i} onEdit={onEdit} onDeactivate={onDeactivate} onHistory={onHistory} onAssignRoom={onAssignRoom} onDelete={onDelete} />
+              {rows.map((s, idx) => (
+                <StudentRow 
+                  key={s._id} 
+                  s={s} 
+                  idx={idx} 
+                  onEdit={onEdit} 
+                  onDeactivate={onDeactivate} 
+                  onHistory={onHistory} 
+                  onAssignRoom={onAssignRoom} 
+                  onDelete={onDelete} 
+                />
               ))}
             </tbody>
           </table>
@@ -106,8 +165,6 @@ function StudentTable({ rows, loading, onEdit, onDeactivate, onHistory, onAssign
     </Card>
   );
 }
-
-// ── Main Tab ──────────────────────────────────────────────
 
 export default function StudentsTab() {
   const [students, setStudents] = useState([]);
@@ -159,36 +216,54 @@ export default function StudentsTab() {
   };
 
   return (
-    <div className="space-y-4">
-      {/* Top bar */}
-      <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-        <div className="relative flex-1 max-w-sm">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
-          <input value={search} onChange={(e) => setSearch(e.target.value)}
-                 placeholder="Search by name, roll, or room..."
-                 className="w-full pl-9 pr-4 py-2.5 border border-[var(--color-border)] rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
+    <div className="space-y-6">
+      
+      {/* Top filter bar operations - Asymmetric layout */}
+      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+        
+        {/* Search tool panel */}
+        <div className="relative w-full max-w-sm shrink-0">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input 
+            value={search} 
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name, roll, or room..."
+            className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200/60 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary-100 focus:border-primary-500 transition-smooth" 
+          />
         </div>
-        <Button variant="primary" size="sm" onClick={() => setModal('add')}>+ Add Student</Button>
+
+        {/* Dynamic sliding sub-tabs */}
+        <div className="flex gap-1.5 p-1 bg-slate-100 rounded-xl flex-wrap w-full sm:w-auto justify-start sm:justify-end">
+          {[
+            { id: 'active', label: 'Allotted', count: students.filter(s=>s.active && !!s.roomNo).length },
+            { id: 'unallotted', label: 'Unallotted', count: students.filter(s=>s.active && !s.roomNo).length },
+            { id: 'alumni', label: 'Passed Out', count: students.filter(s=>!s.active).length },
+          ].map((t) => {
+            const isSelected = subTab === t.id;
+            return (
+              <button 
+                key={t.id} 
+                onClick={() => setSubTab(t.id)}
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-smooth cursor-pointer ${
+                  isSelected ? 'bg-white text-slate-800 shadow-sm border border-slate-200/20' : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                {t.label} ({t.count})
+              </button>
+            );
+          })}
+        </div>
+
+        <button 
+          onClick={() => setModal('add')}
+          className="w-full sm:w-auto py-2.5 px-4 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs font-bold transition-smooth flex items-center justify-center gap-1.5 cursor-pointer shadow-glow"
+        >
+          <Plus className="w-4 h-4" /> Add Student
+        </button>
+
       </div>
 
-      {/* Sub-tabs: Active | Unallotted | Alumni */}
-      <div className="flex gap-1 p-1 bg-slate-100 rounded-xl w-fit flex-wrap">
-        {[
-          { id: 'active', label: `Active (${students.filter(s=>s.active && !!s.roomNo).length})` },
-          { id: 'unallotted', label: `Unallotted (${students.filter(s=>s.active && !s.roomNo).length})` },
-          { id: 'alumni', label: `Passed Out (${students.filter(s=>!s.active).length})` },
-        ].map((t) => (
-          <button key={t.id} onClick={() => setSubTab(t.id)}
-                  className={[
-                    'px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 cursor-pointer',
-                    subTab === t.id ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700',
-                  ].join(' ')}>
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Table */}
+      {/* Main Interactive Table */}
       <StudentTable
         rows={displayed}
         loading={loading}
@@ -199,27 +274,29 @@ export default function StudentsTab() {
         onDelete={handleDelete}
       />
 
-      {/* Modals */}
-      {modal && (
-        <StudentModal
-          student={modal === 'add' ? null : modal}
-          onSave={handleSave}
-          onClose={() => setModal(null)}
-        />
-      )}
-      {historyStudent && (
-        <StudentHistoryModal
-          student={historyStudent}
-          onClose={() => setHistoryStudent(null)}
-        />
-      )}
-      {assignRoomModal && (
-        <AssignRoomModal
-          student={assignRoomModal}
-          onSave={() => { setAssignRoomModal(null); load(); }}
-          onClose={() => setAssignRoomModal(null)}
-        />
-      )}
+      {/* Modals & Sheet Dialogs */}
+      <AnimatePresence>
+        {modal && (
+          <StudentModal
+            student={modal === 'add' ? null : modal}
+            onSave={handleSave}
+            onClose={() => setModal(null)}
+          />
+        )}
+        {historyStudent && (
+          <StudentHistoryModal
+            student={historyStudent}
+            onClose={() => setHistoryStudent(null)}
+          />
+        )}
+        {assignRoomModal && (
+          <AssignRoomModal
+            student={assignRoomModal}
+            onSave={() => { setAssignRoomModal(null); load(); }}
+            onClose={() => setAssignRoomModal(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

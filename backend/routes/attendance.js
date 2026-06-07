@@ -136,18 +136,25 @@ router.get('/report', async (req, res) => {
       date: { $gte: `${month}-01`, $lte: `${month}-31` },
     });
 
-    // Build lookup: studentId → count of present days
-    const presentMap = {};
+    // Build lookup: studentId → { presentDays: number, absentDays: number }
+    const statsMap = {};
     allRecords.forEach((r) => {
+      const key = r.studentId.toString();
+      if (!statsMap[key]) {
+        statsMap[key] = { presentDays: 0, absentDays: 0 };
+      }
       if (r.present) {
-        const key = r.studentId.toString();
-        presentMap[key] = (presentMap[key] || 0) + 1;
+        statsMap[key].presentDays++;
+      } else {
+        statsMap[key].absentDays++;
       }
     });
 
     const report = students.map((s) => {
-      const presentDays = presentMap[s._id.toString()] || 0;
-      const absentDays = totalDays - presentDays;
+      const stats = statsMap[s._id.toString()] || { presentDays: 0, absentDays: 0 };
+      const presentDays = stats.presentDays;
+      const absentDays = stats.absentDays;
+      const studentTotalDays = presentDays + absentDays;
 
       return {
         studentId: s._id,
@@ -156,11 +163,76 @@ router.get('/report', async (req, res) => {
         roomNo: s.roomNo,
         presentDays,
         absentDays,
-        totalDays,
+        totalDays: studentTotalDays,
       };
     });
 
     res.json(report);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// --------------- GET /api/attendance/stats/today ---------------
+// Returns today's overall stats and room highlighting information
+router.get('/stats/today', async (req, res) => {
+  try {
+    const date = todayStr();
+    const students = await Student.find({ active: true });
+    const records = await Attendance.find({ date });
+
+    const recordMap = {};
+    records.forEach((r) => {
+      recordMap[r.studentId.toString()] = r.present;
+    });
+
+    let present = 0;
+    let absent = 0;
+    let unmarked = 0;
+
+    // Build mapping: roomNo → { totalActiveStudents: 0, markedCount: 0 }
+    const roomStats = {};
+
+    students.forEach((s) => {
+      if (!s.roomNo) return;
+      
+      const status = recordMap[s._id.toString()];
+      if (status === true) {
+        present++;
+      } else if (status === false) {
+        absent++;
+      } else {
+        unmarked++;
+      }
+
+      if (!roomStats[s.roomNo]) {
+        roomStats[s.roomNo] = { total: 0, marked: 0 };
+      }
+      roomStats[s.roomNo].total++;
+      if (status !== undefined && status !== null) {
+        roomStats[s.roomNo].marked++;
+      }
+    });
+
+    // Map roomNo → 'fully' | 'partially' | 'unmarked'
+    const roomHighlight = {};
+    Object.entries(roomStats).forEach(([roomNo, stats]) => {
+      if (stats.marked === 0) {
+        roomHighlight[roomNo] = 'unmarked';
+      } else if (stats.marked === stats.total) {
+        roomHighlight[roomNo] = 'fully';
+      } else {
+        roomHighlight[roomNo] = 'partially';
+      }
+    });
+
+    res.json({
+      date,
+      present,
+      absent,
+      unmarked,
+      roomHighlight,
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

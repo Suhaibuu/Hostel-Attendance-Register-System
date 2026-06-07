@@ -1,6 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const Student = require('../models/Student');
+const Attendance = require('../models/Attendance');
 const { protect } = require('../middleware/auth');
 
 const router = express.Router();
@@ -129,16 +130,26 @@ router.put('/:id', adminOnly, async (req, res) => {
 });
 
 // ── DELETE /api/students/:id ─────────────────────────────
-// Admin only — soft delete (set active = false)
+// Admin only — delete student
+// If req.query.hard === 'true', permanently delete the student and their attendance records.
+// Otherwise (default), soft delete (set active = false).
 router.delete('/:id', adminOnly, async (req, res) => {
   try {
-    const student = await Student.findByIdAndUpdate(
-      req.params.id,
-      { active: false },
-      { new: true }
-    );
-    if (!student) return res.status(404).json({ message: 'Student not found' });
-    res.json({ message: 'Student deactivated' });
+    if (req.query.hard === 'true') {
+      const student = await Student.findByIdAndDelete(req.params.id);
+      if (!student) return res.status(404).json({ message: 'Student not found' });
+      // Delete associated attendance records too
+      await Attendance.deleteMany({ studentId: req.params.id });
+      res.json({ message: 'Student and attendance records permanently deleted' });
+    } else {
+      const student = await Student.findByIdAndUpdate(
+        req.params.id,
+        { active: false },
+        { new: true }
+      );
+      if (!student) return res.status(404).json({ message: 'Student not found' });
+      res.json({ message: 'Student deactivated (marked as Passed Out)' });
+    }
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

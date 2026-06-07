@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getStudents, createStudent, updateStudent, deactivateStudent } from '../../api/students';
+import { getStudents, createStudent, updateStudent, deactivateStudent, deleteStudent } from '../../api/students';
 import Card from '../ui/Card';
 import Badge from '../ui/Badge';
 import Button from '../ui/Button';
@@ -17,7 +17,7 @@ const initials = (n) => {
 
 // ── Shared student row ────────────────────────────────────
 
-function StudentRow({ s, i, onEdit, onDeactivate, onHistory, onAssignRoom }) {
+function StudentRow({ s, i, onEdit, onDeactivate, onHistory, onAssignRoom, onDelete }) {
   return (
     <tr className={i % 2 ? 'bg-slate-50/50' : ''}>
       <td className="py-3 pl-3">
@@ -56,6 +56,9 @@ function StudentRow({ s, i, onEdit, onDeactivate, onHistory, onAssignRoom }) {
           {onDeactivate && s.active && (
             <Button variant="danger" size="sm" onClick={() => onDeactivate(s._id)}>Passed Out</Button>
           )}
+          {onDelete && (
+            <Button variant="ghost" size="sm" onClick={() => onDelete(s)} title="Delete permanently" className="text-red-600 border border-red-200 hover:bg-red-50">Delete</Button>
+          )}
         </div>
       </td>
     </tr>
@@ -64,7 +67,7 @@ function StudentRow({ s, i, onEdit, onDeactivate, onHistory, onAssignRoom }) {
 
 // ── Shared table shell ────────────────────────────────────
 
-function StudentTable({ rows, loading, onEdit, onDeactivate, onHistory, onAssignRoom }) {
+function StudentTable({ rows, loading, onEdit, onDeactivate, onHistory, onAssignRoom, onDelete }) {
   return (
     <Card padding="sm">
       {loading ? (
@@ -95,7 +98,7 @@ function StudentTable({ rows, loading, onEdit, onDeactivate, onHistory, onAssign
             </thead>
             <tbody>
               {rows.map((s, i) => (
-                <StudentRow key={s._id} s={s} i={i} onEdit={onEdit} onDeactivate={onDeactivate} onHistory={onHistory} onAssignRoom={onAssignRoom} />
+                <StudentRow key={s._id} s={s} i={i} onEdit={onEdit} onDeactivate={onDeactivate} onHistory={onHistory} onAssignRoom={onAssignRoom} onDelete={onDelete} />
               ))}
             </tbody>
           </table>
@@ -144,6 +147,18 @@ export default function StudentsTab() {
     load();
   };
 
+  const handleDelete = async (student) => {
+    if (!window.confirm(`Are you sure you want to PERMANENTLY delete ${student.name} (${student.rollNo})?\n\nThis will permanently delete all of their attendance records and cannot be undone.`)) {
+      return;
+    }
+    try {
+      await deleteStudent(student._id);
+      load();
+    } catch (err) {
+      alert(err.message || 'Failed to delete student');
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Top bar */}
@@ -182,6 +197,7 @@ export default function StudentsTab() {
         onDeactivate={(subTab === 'active' || subTab === 'unallotted') ? handleDeactivate : null}
         onHistory={setHistoryStudent}
         onAssignRoom={setAssignRoomModal}
+        onDelete={handleDelete}
       />
 
       {/* Modals */}

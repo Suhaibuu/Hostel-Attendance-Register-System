@@ -34,3 +34,8 @@ export const deactivateStudent = async (id) => {
   const { data } = await api.delete(`/api/students/${id}`);
   return data;
 };
+
+export const deleteStudent = async (id) => {
+  const { data } = await api.delete(`/api/students/${id}?hard=true`);
+  return data;
+};

@@ -85,9 +85,12 @@ export default function StudentProfilePage() {
     <div className="min-h-screen bg-[var(--color-surface)]">
       {/* Top bar */}
       <div className="bg-white border-b border-[var(--color-border)] px-4 py-3 flex items-center justify-between sticky top-0 z-10 shadow-sm">
-        <div>
-          <h1 className="text-base font-bold text-slate-800">My Profile</h1>
-          <p className="text-xs text-slate-500">HostelTrack · GEC Wayanad</p>
+        <div className="flex items-center gap-2.5">
+          <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain shrink-0" />
+          <div>
+            <h1 className="text-base font-bold text-slate-800">My Profile</h1>
+            <p className="text-xs text-slate-500">HostelTrack · GEC Wayanad</p>
+          </div>
         </div>
         <Button variant="ghost" size="sm" onClick={logout}>Logout</Button>
       </div>

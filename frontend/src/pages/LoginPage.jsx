@@ -66,11 +66,10 @@ export default function LoginPage() {
     >
       <div className="w-full max-w-sm">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="text-5xl mb-3">🏫</div>
+        <div className="text-center mb-8 flex flex-col items-center">
+          <img src="/logo.png" alt="GEC Wayanad Logo" className="w-28 h-28 object-contain mb-3" />
           <h1 className="text-2xl font-bold text-slate-800">HostelTrack</h1>
-          <p className="text-sm text-slate-500 mt-1">Hostel Attendance System</p>
-          <p className="text-xs text-blue-600 font-medium mt-0.5">GEC Wayanad</p>
+          <p className="text-xs text-blue-600 font-medium mt-1">GEC Wayanad</p>
         </div>
 
         {/* Card */}

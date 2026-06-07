@@ -67,7 +67,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Header */}
         <div className="text-center mb-8 flex flex-col items-center">
-          <img src="/logo.png" alt="GEC Wayanad Logo" className="w-28 h-28 object-contain mb-3" />
+          <img src="/logo.png" alt="GEC Wayanad Logo" style={{ width: '80px', height: '80px', objectFit: 'contain' }} className="mb-3 shrink-0" />
           <h1 className="text-2xl font-bold text-slate-800">HostelTrack</h1>
           <p className="text-xs text-blue-600 font-medium mt-1">GEC Wayanad</p>
         </div>

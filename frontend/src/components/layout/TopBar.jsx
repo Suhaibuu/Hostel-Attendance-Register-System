@@ -7,7 +7,7 @@ export default function TopBar({ title, subtitle, rightContent }) {
     >
       {/* Left — logo + title */}
       <div className="flex items-center gap-2.5 min-w-0">
-        <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain shrink-0" />
+        <img src="/logo.png" alt="Logo" style={{ width: '36px', height: '36px', objectFit: 'contain' }} className="shrink-0" />
         <div className="min-w-0">
           <h1 className="text-base font-bold text-[var(--color-text-primary)] truncate leading-tight">
             {title}

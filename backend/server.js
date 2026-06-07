@@ -9,6 +9,11 @@ const app = express();
 app.use(cors());           // allow all origins
 app.use(express.json());   // parse JSON bodies
 
+
+app.get('/', (req, res) => {
+  res.send("Hostel Attendance System Running");
+});
+
 // --------------- Health check ---------------
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date() });

@@ -7,8 +7,23 @@ require('dotenv').config();
 const app = express();
 
 // --------------- Middleware ---------------
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'https://hostel-attendance-register-system.onrender.com'
+];
 app.use(cors({
-  origin: 'https://hostel-attendance-register-system.onrender.com',
+  origin: (origin, callback) => {
+    if (!origin || 
+        allowedOrigins.includes(origin) || 
+        origin.startsWith('http://localhost:') || 
+        origin.startsWith('http://127.0.0.1:')) {
+      callback(null, true);
+    } else {
+      console.log('Rejected Origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 app.use(express.json());

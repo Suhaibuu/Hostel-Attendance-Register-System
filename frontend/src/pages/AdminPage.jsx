@@ -22,7 +22,7 @@ export default function AdminPage() {
   return (
     <PageWrapper>
       <TopBar
-        title="HostelTrack Admin"
+        title="Hostel Attendance Admin"
         subtitle="Operational Control Room"
         rightContent={
           <div className="flex items-center gap-3">

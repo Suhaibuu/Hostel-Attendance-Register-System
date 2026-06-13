@@ -268,7 +268,7 @@ export default function WardenPage() {
   return (
     <PageWrapper>
       <TopBar
-        title="HostelTrack Warden"
+        title="Hostel Attendance Warden"
         subtitle={formatDate()}
         rightContent={
           <div className="flex items-center gap-3">

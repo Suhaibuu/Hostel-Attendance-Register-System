@@ -87,7 +87,7 @@ export default function LoginPage() {
             </motion.div>
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 font-sans">
-            Hostel<span className="text-primary-600">Track</span>
+            Hostel<span className="text-primary-600"> Attendance</span>
           </h1>
           <p className="text-xs text-slate-500 font-medium mt-1.5 tracking-wider uppercase">
             Government Engineering College, Wayanad
@@ -296,7 +296,7 @@ export default function LoginPage() {
           transition={{ delay: 0.3, duration: 0.6 }}
           className="text-center mt-6 text-xs text-slate-400 font-medium"
         >
-          HostelTrack System · GEC Wayanad · © {new Date().getFullYear()}
+          Hostel Attendance System · GEC Wayanad · © {new Date().getFullYear()}
         </motion.div>
       </div>
     </div>

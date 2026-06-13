@@ -96,7 +96,7 @@ export default function StudentProfilePage() {
             <img src="/logo.png" alt="GEC Logo" className="w-8 h-8 object-contain" />
           </div>
           <div>
-            <h1 className="text-base font-extrabold tracking-tight">HostelTrack</h1>
+            <h1 className="text-base font-extrabold tracking-tight">Hostel Attendance</h1>
             <p className="text-[10px] text-indigo-200 font-bold uppercase tracking-wider">Student Portal</p>
           </div>
         </div>

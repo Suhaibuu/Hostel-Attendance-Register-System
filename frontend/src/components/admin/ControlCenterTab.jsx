@@ -130,97 +130,64 @@ export default function ControlCenterTab() {
 
   return (
     <div className="space-y-6">
-      {/* Dynamic Summary Panels - Non-Uniform Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        
-        {/* Main Stat: Control Room Status */}
+      {/* Dynamic Summary Panels */}
+      <div>
+        {/* Today's Check-Ins */}
         <motion.div 
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          className="lg:col-span-5 bg-slate-900 text-white rounded-3xl p-6 relative overflow-hidden shadow-premium flex flex-col justify-between min-h-[200px]"
+          className="bg-white rounded-3xl p-6 border border-slate-200/50 shadow-premium flex flex-col md:flex-row items-center justify-between gap-6"
         >
-          <div className="absolute top-0 right-0 w-36 h-36 bg-primary-600/20 rounded-full blur-3xl pointer-events-none" />
-          <div className="flex items-center justify-between">
-            <span className="text-xs uppercase tracking-widest text-primary-300 font-bold flex items-center gap-1.5">
-              <Activity className="w-3.5 h-3.5 text-primary-400 animate-pulse" />
-              Live Operations
-            </span>
-            <span className="px-2.5 py-1 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-full text-[10px] font-bold uppercase tracking-wider">
-              Stable
-            </span>
-          </div>
-          <div>
-            <h3 className="text-4xl font-extrabold font-sans text-white leading-none tracking-tight">
-              {totalStudents} <span className="text-sm font-normal text-slate-400">active residents</span>
-            </h3>
-            <p className="text-xs text-slate-400 mt-2 font-medium">
-              Occupying {occupiedRooms} rooms · {occupancyRate}% hostel capacity filled
-            </p>
-          </div>
-          <div className="flex gap-2 mt-4 border-t border-slate-800/80 pt-4">
-            <button 
-              onClick={fetchData}
-              className="flex-1 py-2 px-3 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-smooth cursor-pointer text-slate-200"
-            >
-              <RefreshCw className="w-3.5 h-3.5" /> Re-Sync
-            </button>
-            <button className="flex-1 py-2 px-3 bg-primary-600 hover:bg-primary-500 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-smooth cursor-pointer text-white">
-              <Sparkles className="w-3.5 h-3.5" /> Analytics
-            </button>
-          </div>
-        </motion.div>
-
-        {/* Live Attendance State Dial */}
-        <motion.div 
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="lg:col-span-7 bg-white rounded-3xl p-6 border border-slate-200/50 shadow-premium flex flex-col md:flex-row items-center gap-6"
-        >
-          <div className="relative w-32 h-32 shrink-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={38}
-                  outerRadius={50}
-                  paddingAngle={4}
-                  dataKey="value"
-                >
-                  {pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-2xl font-black text-slate-800 font-sans">
-                {Math.round((attendanceStats.present / (totalStudents || 1)) * 100)}%
-              </span>
-              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Present</span>
+          <div className="flex items-center gap-6">
+            <div className="relative w-32 h-32 shrink-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={38}
+                    outerRadius={50}
+                    paddingAngle={4}
+                    dataKey="value"
+                  >
+                    {pieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-2xl font-black text-slate-800 font-sans">
+                  {Math.round((attendanceStats.present / (totalStudents || 1)) * 100)}%
+                </span>
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Present</span>
+              </div>
+            </div>
+            
+            <div className="space-y-1">
+              <h4 className="text-sm font-black text-slate-800 uppercase tracking-wider">Today's Check-Ins</h4>
+              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Hostel Roll-Call Status Overview</p>
             </div>
           </div>
-          <div className="flex-1 w-full space-y-3">
-            <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Today's Check-Ins</h4>
-            <div className="grid grid-cols-3 gap-2">
-              <div className="p-2 bg-emerald-50 rounded-xl text-center border border-emerald-100">
-                <p className="text-[10px] text-emerald-600 font-bold uppercase">Present</p>
-                <p className="text-lg font-extrabold text-emerald-800">{attendanceStats.present}</p>
+
+          <div className="w-full md:w-auto md:min-w-[400px]">
+            <div className="grid grid-cols-3 gap-3">
+              <div className="p-3 bg-emerald-50 rounded-2xl text-center border border-emerald-100/50">
+                <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Present</p>
+                <p className="text-xl font-black text-emerald-800 mt-1">{attendanceStats.present}</p>
               </div>
-              <div className="p-2 bg-red-50 rounded-xl text-center border border-red-100">
-                <p className="text-[10px] text-red-500 font-bold uppercase">Absent</p>
-                <p className="text-lg font-extrabold text-red-800">{attendanceStats.absent}</p>
+              <div className="p-3 bg-red-50 rounded-2xl text-center border border-red-100/50">
+                <p className="text-[10px] text-red-500 font-bold uppercase tracking-wider">Absent</p>
+                <p className="text-xl font-black text-red-800 mt-1">{attendanceStats.absent}</p>
               </div>
-              <div className="p-2 bg-amber-50 rounded-xl text-center border border-amber-100">
-                <p className="text-[10px] text-amber-500 font-bold uppercase">Unmarked</p>
-                <p className="text-lg font-extrabold text-amber-800">{attendanceStats.unmarked}</p>
+              <div className="p-3 bg-amber-50 rounded-2xl text-center border border-amber-100/50">
+                <p className="text-[10px] text-amber-500 font-bold uppercase tracking-wider">Unmarked</p>
+                <p className="text-xl font-black text-amber-800 mt-1">{attendanceStats.unmarked}</p>
               </div>
             </div>
           </div>
         </motion.div>
-
       </div>
       {/* Occupancy Map */}
       <div className="bg-white rounded-3xl border border-slate-200/50 p-6 shadow-premium relative">

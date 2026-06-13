@@ -156,14 +156,24 @@ router.get('/report', async (req, res) => {
       const absentDays = stats.absentDays;
       const studentTotalDays = presentDays + absentDays;
 
+      // Mess cut calculation:
+      // General/OBC: 2 absent days = 1 mess cut (floor division)
+      // SC/ST/OEC: 3 absent days = 1 mess cut (floor division)
+      const category = s.category || 'General';
+      const divisor = (category === 'SC' || category === 'ST' || category === 'OEC') ? 3 : 2;
+      const messCut = Math.floor(absentDays / divisor);
+
       return {
         studentId: s._id,
         name: s.name,
         rollNo: s.rollNo,
         roomNo: s.roomNo,
+        department: s.department,
+        category,
         presentDays,
         absentDays,
         totalDays: studentTotalDays,
+        messCut,
       };
     });
 

@@ -27,6 +27,11 @@ const studentSchema = new mongoose.Schema({
     enum: ['UG', 'PG'],
     default: 'UG',
   },
+  category: {
+    type: String,
+    enum: ['General', 'OBC', 'SC', 'ST', 'OEC'],
+    default: 'General',
+  },
   // Student login — default password is their roll no (lowercase)
   passwordHash: {
     type: String,

@@ -39,6 +39,7 @@ function AddStudentModal({ onSave, onClose }) {
     roomNo: '',
     department: 'Computer Science (CSE)',
     level: 'UG',
+    category: 'General',
   });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -118,6 +119,17 @@ function AddStudentModal({ onSave, onClose }) {
               <option value="Electronics and Communication(ECE)">Electronics (ECE)</option>
               <option value="Mechanical(ME)">Mechanical (ME)</option>
               <option value="Electrical and Electronics(EEE)">Electrical (EEE)</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Category</label>
+            <select value={form.category} onChange={(e) => set('category', e.target.value)} className={inp}>
+              <option value="General">General</option>
+              <option value="OBC">OBC</option>
+              <option value="SC">SC</option>
+              <option value="ST">ST</option>
+              <option value="OEC">OEC</option>
             </select>
           </div>
 

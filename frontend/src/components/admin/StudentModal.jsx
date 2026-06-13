@@ -13,6 +13,7 @@ export default function StudentModal({ student, onSave, onClose }) {
     roomNo: student?.roomNo || '',
     department: student?.department || 'Computer Science (CSE)',
     level: student?.level || 'UG',
+    category: student?.category || 'General',
   });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -117,6 +118,17 @@ export default function StudentModal({ student, onSave, onClose }) {
               <option value="Electronics and Communication(ECE)">Electronics and Communication(ECE)</option>
               <option value="Mechanical(ME)">Mechanical (ME)</option>
               <option value="Electrical and Electronics(EEE)">Electrical and Electronics(EEE)</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Category</label>
+            <select value={form.category} onChange={(e) => set('category', e.target.value)} className={inputCls}>
+              <option value="General">General</option>
+              <option value="OBC">OBC</option>
+              <option value="SC">SC</option>
+              <option value="ST">ST</option>
+              <option value="OEC">OEC</option>
             </select>
           </div>
 

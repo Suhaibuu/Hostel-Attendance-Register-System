@@ -94,13 +94,13 @@ router.get('/:id', async (req, res) => {
 // Default login password = roll no (lowercase), hashed and stored immediately
 router.post('/', async (req, res) => {
   try {
-    const { name, rollNo, roomNo, department, level } = req.body || {};
+    const { name, rollNo, roomNo, department, level, category } = req.body || {};
 
     // Hash roll no (lowercase) as the default password
     const passwordHash = await bcrypt.hash(rollNo.trim().toLowerCase(), 10);
 
     const student = await Student.create({
-      name, rollNo, roomNo: roomNo || null, department, level, passwordHash,
+      name, rollNo, roomNo: roomNo || null, department, level, category, passwordHash,
     });
 
     const { passwordHash: _, ...safe } = student.toObject();

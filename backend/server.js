@@ -1,53 +1,67 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const path = require('path');
 require('dotenv').config();
 
 const app = express();
 
-// --------------- Middleware ---------------
+// ---------------- CORS ----------------
 const allowedOrigins = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
-  'https://hostel-attendance-register-system.onrender.com'
+  'https://hostel-attendance-register-system.vercel.app/login'
 ];
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || 
-        allowedOrigins.includes(origin) || 
-        origin.startsWith('http://localhost:') || 
-        origin.startsWith('http://127.0.0.1:')) {
-      callback(null, true);
-    } else {
-      console.log('Rejected Origin:', origin);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true
-}));
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, Postman, etc.)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      // Allow localhost during development
+      if (
+        origin.startsWith('http://localhost:') ||
+        origin.startsWith('http://127.0.0.1:')
+      ) {
+        return callback(null, true);
+      }
+
+      // Allow trusted production domains
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      console.log('❌ Rejected Origin:', origin);
+      return callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
+  })
+);
+
+// ---------------- Middleware ----------------
 app.use(express.json());
 
-
-// --------------- Health Check ---------------
+// ---------------- Health Check ----------------
 app.get('/api/health', (_req, res) => {
   res.json({
     status: 'ok',
-    timestamp: new Date()
+    timestamp: new Date(),
   });
 });
 
-// --------------- API Routes ---------------
+// ---------------- API Routes ----------------
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/students', require('./routes/students'));
 app.use('/api/attendance', require('./routes/attendance'));
 
-app.use(express.static(path.join(__dirname, 'dist')));
-
-app.use((req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+// ---------------- Root Route ----------------
+app.get('/', (_req, res) => {
+  res.send('🚀 Hostel Attendance Backend Running');
 });
-// --------------- Database & Server Start ---------------
+
+// ---------------- Start Server ----------------
 const PORT = process.env.PORT || 5000;
 
 const MONGO_URI =

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getStudents, getRooms } from '../../api/students';
-import { getReport } from '../../api/attendance';
+import { getReport, getTodayStats } from '../../api/attendance';
 import { 
   Activity, Users, Home, AlertTriangle, Clock, TrendingUp, CheckCircle, 
   XCircle, ChevronRight, Plus, Search, Calendar, RefreshCw, Sparkles, Map
@@ -28,28 +28,18 @@ export default function ControlCenterTab() {
       const currentMonth = new Date().toISOString().slice(0, 7);
       const report = await getReport(currentMonth);
 
-      // Construct live simulation of today's attendance state
-      let present = 0;
-      let absent = 0;
-      let unmarked = 0;
-
-      studentData.forEach(student => {
-        if (!student.roomNo) {
-          unmarked++;
-          return;
-        }
-        // Deterministic simulation based on student hash to avoid static zeros
-        const hash = student.name.charCodeAt(0) + student.rollNo.charCodeAt(student.rollNo.length - 1);
-        if (hash % 3 === 0) {
-          present++;
-        } else if (hash % 3 === 1) {
-          absent++;
-        } else {
-          unmarked++;
-        }
-      });
-
-      setAttendanceStats({ present, absent, unmarked });
+      // Get actual today's attendance stats from API
+      try {
+        const stats = await getTodayStats();
+        setAttendanceStats({
+          present: stats.present,
+          absent: stats.absent,
+          unmarked: stats.unmarked
+        });
+      } catch (statsErr) {
+        console.error('Failed to load today stats:', statsErr);
+        setAttendanceStats({ present: 0, absent: 0, unmarked: studentData.length });
+      }
 
       // Generate a mock real-time student activity feed
       const actions = ['Checked In', 'Checked Out', 'Marked Present', 'Late Entry', 'Room Changed'];
@@ -159,7 +149,7 @@ export default function ControlCenterTab() {
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-2xl font-black text-slate-800 font-sans">
-                  {Math.round((attendanceStats.present / (totalStudents || 1)) * 100)}%
+                  {Math.round((attendanceStats.present / ((attendanceStats.present + attendanceStats.absent + attendanceStats.unmarked) || 1)) * 100)}%
                 </span>
                 <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Present</span>
               </div>

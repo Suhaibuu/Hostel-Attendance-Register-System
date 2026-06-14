@@ -44,30 +44,32 @@ export default function AdminPage() {
 
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-6 space-y-6">
         {/* Modern Sliding Navigation Tabs */}
-        <div className="flex gap-2 p-1.5 bg-slate-200/60 m-0 rounded-2xl w-fit border border-slate-200/10">
-          {tabs.map((t) => {
-            const Icon = t.icon;
-            const isSelected = activeTab === t.id;
-            return (
-              <button
-                key={t.id}
-                onClick={() => setActiveTab(t.id)}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-smooth relative cursor-pointer ${
-                  isSelected ? 'text-white' : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                <Icon className="w-4 h-4 shrink-0" />
-                <span>{t.label}</span>
-                {isSelected && (
-                  <motion.div 
-                    layoutId="adminTabBg" 
-                    className="absolute inset-0 bg-primary-600 rounded-xl shadow-glow z-[-1]" 
-                    transition={{ type: "spring", stiffness: 350, damping: 28 }}
-                  />
-                )}
-              </button>
-            );
-          })}
+        <div className="w-full overflow-x-auto scrollbar-none pb-1">
+          <div className="flex gap-2 p-1.5 bg-slate-200/60 m-0 rounded-2xl w-max border border-slate-200/10">
+            {tabs.map((t) => {
+              const Icon = t.icon;
+              const isSelected = activeTab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setActiveTab(t.id)}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-smooth relative cursor-pointer shrink-0 ${
+                    isSelected ? 'text-white' : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  <Icon className="w-4 h-4 shrink-0" />
+                  <span>{t.label}</span>
+                  {isSelected && (
+                    <motion.div 
+                      layoutId="adminTabBg" 
+                      className="absolute inset-0 bg-primary-600 rounded-xl shadow-glow z-[-1]" 
+                      transition={{ type: "spring", stiffness: 350, damping: 28 }}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Tab content panel wrapper with subtle motion reveal */}

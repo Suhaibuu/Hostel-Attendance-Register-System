@@ -134,7 +134,7 @@ function StudentTable({ rows, loading, onEdit, onDeactivate, onHistory, onAssign
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[650px]">
             <thead>
               <tr className="text-left text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 bg-slate-50/50">
                 <th className="py-4 pl-4">Resident</th>

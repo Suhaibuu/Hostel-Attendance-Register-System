@@ -127,8 +127,8 @@ export default function AttendanceTab() {
   const totalPresent = data.reduce((s, r) => s + r.presentDays, 0);
   const totalMessCuts = data.reduce((s, r) => s + (r.messCut || 0), 0);
 
-  const SortHeader = ({ k, children }) => (
-    <th className="py-4 cursor-pointer select-none hover:text-slate-800 transition-colors uppercase tracking-wider text-[10px] font-bold"
+  const SortHeader = ({ k, children, className = '' }) => (
+    <th className={`py-4 cursor-pointer select-none hover:text-slate-800 transition-colors uppercase tracking-wider text-[10px] font-bold ${className}`}
         onClick={() => toggleSort(k)}>
       <div className="flex items-center gap-1.5">
         <span>{children}</span>
@@ -197,16 +197,16 @@ export default function AttendanceTab() {
           {/* Dataset View table */}
           <Card padding="none" className="overflow-hidden border border-slate-200/50 rounded-3xl shadow-premium bg-white">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm min-w-[750px]">
                 <thead>
                   <tr className="text-left text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 bg-slate-50/50">
-                    <th className="py-4 pl-4"><SortHeader k="roomNo">Room</SortHeader></th>
-                    <th className="py-4"><SortHeader k="name">Resident</SortHeader></th>
-                    <th className="py-4">Roll No</th>
-                    <th className="py-4">Category</th>
-                    <th className="py-4 text-emerald-600">Present</th>
-                    <th className="py-4 text-red-500">Absent</th>
-                    <th className="py-4 pr-4 text-orange-600"><SortHeader k="messCut">Mess Cut</SortHeader></th>
+                    <SortHeader k="roomNo" className="pl-4">Room</SortHeader>
+                    <SortHeader k="name">Resident</SortHeader>
+                    <th className="py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Roll No</th>
+                    <th className="py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Category</th>
+                    <th className="py-4 text-[10px] font-bold uppercase tracking-wider text-emerald-600">Present</th>
+                    <th className="py-4 text-[10px] font-bold uppercase tracking-wider text-red-500">Absent</th>
+                    <SortHeader k="messCut" className="pr-4 text-orange-600">Mess Cut</SortHeader>
                   </tr>
                 </thead>
                 <tbody>

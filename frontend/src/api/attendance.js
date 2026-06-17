@@ -5,10 +5,15 @@ export const markAttendance = async (data) => {
   return result;
 };
 
-export const getTodayAttendance = async (roomNo) => {
-  const { data } = await api.get(`/api/attendance/today/${roomNo}`);
+// Fetch attendance for a room on any date (today by default)
+export const getRoomAttendance = async (roomNo, date) => {
+  const params = date ? { date } : {};
+  const { data } = await api.get(`/api/attendance/date/${roomNo}`, { params });
   return data;
 };
+
+// Legacy alias – still works (backend now delegates to same handler)
+export const getTodayAttendance = async (roomNo) => getRoomAttendance(roomNo);
 
 export const getStudentAttendance = async (studentId, month) => {
   const { data } = await api.get(`/api/attendance/student/${studentId}`, {

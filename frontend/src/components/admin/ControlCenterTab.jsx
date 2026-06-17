@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getStudents, getRooms } from '../../api/students';
-import { getReport, getTodayStats } from '../../api/attendance';
+import { getTodayStats } from '../../api/attendance';
 import { 
   Activity, Users, Home, AlertTriangle, Clock, TrendingUp, CheckCircle, 
   XCircle, ChevronRight, Plus, Search, Calendar, RefreshCw, Sparkles, Map
@@ -19,29 +19,22 @@ export default function ControlCenterTab() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const studentData = await getStudents();
-      const roomData = await getRooms();
+      // Run all API calls in parallel for maximum speed
+      const [studentData, roomData, stats] = await Promise.all([
+        getStudents(),
+        getRooms(),
+        getTodayStats().catch(() => ({ present: 0, absent: 0, unmarked: 0 })),
+      ]);
+
       setStudents(studentData);
       setRooms(roomData.rooms || []);
+      setAttendanceStats({
+        present: stats.present,
+        absent: stats.absent,
+        unmarked: stats.unmarked,
+      });
 
-      // Compute simple dashboard metrics
-      const currentMonth = new Date().toISOString().slice(0, 7);
-      const report = await getReport(currentMonth);
-
-      // Get actual today's attendance stats from API
-      try {
-        const stats = await getTodayStats();
-        setAttendanceStats({
-          present: stats.present,
-          absent: stats.absent,
-          unmarked: stats.unmarked
-        });
-      } catch (statsErr) {
-        console.error('Failed to load today stats:', statsErr);
-        setAttendanceStats({ present: 0, absent: 0, unmarked: studentData.length });
-      }
-
-      // Generate a mock real-time student activity feed
+      // Activity feed (derived from already-fetched data, no extra API call)
       const actions = ['Checked In', 'Checked Out', 'Marked Present', 'Late Entry', 'Room Changed'];
       const feed = studentData.slice(0, 6).map((s, idx) => {
         const time = new Date();

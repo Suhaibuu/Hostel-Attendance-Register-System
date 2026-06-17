@@ -19,9 +19,14 @@ const daysInMonth = (yearMonth) => {
 
 // --------------- POST /api/attendance/mark ---------------
 // Body: { roomNo, date, records: [{ studentId, present }] }
+// date can be today OR any past date (YYYY-MM-DD)
 router.post('/mark', async (req, res) => {
   try {
     const { date, records } = req.body;
+
+    if (!date || !Array.isArray(records)) {
+      return res.status(400).json({ message: 'date and records are required' });
+    }
 
     const ops = records.map((r) =>
       Attendance.findOneAndUpdate(
@@ -42,21 +47,26 @@ router.post('/mark', async (req, res) => {
   }
 });
 
-// --------------- GET /api/attendance/today/:roomNo ---------------
-// Merge active students with today's attendance
-router.get('/today/:roomNo', async (req, res) => {
+// --------------- GET /api/attendance/date/:roomNo?date=YYYY-MM-DD ---------------
+// Flexible: fetch attendance for a room on ANY date (defaults to today)
+const getRoomAttendanceByDate = async (req, res) => {
   try {
-    const date = todayStr();
+    const date = req.query.date || todayStr();
     const { roomNo } = req.params;
+
+    // Basic date validation
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ message: 'Invalid date format. Use YYYY-MM-DD' });
+    }
 
     // Active students in the room
     const students = await Student.find({ roomNo, active: true }).sort({ name: 1 });
 
-    // Today's records for those students
+    // Records for those students on the given date
     const studentIds = students.map((s) => s._id);
     const records = await Attendance.find({ studentId: { $in: studentIds }, date });
 
-    // Build a lookup map  studentId → present
+    // Build lookup map studentId → present
     const recordMap = {};
     records.forEach((r) => {
       recordMap[r.studentId.toString()] = r.present;
@@ -74,7 +84,11 @@ router.get('/today/:roomNo', async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
-});
+};
+
+// Both endpoints: /date/:roomNo?date=YYYY-MM-DD  and  /today/:roomNo (alias)
+router.get('/date/:roomNo', getRoomAttendanceByDate);
+router.get('/today/:roomNo', getRoomAttendanceByDate);
 
 // --------------- GET /api/attendance/student/:studentId ---------------
 // ?month=2026-06  (default: current month)

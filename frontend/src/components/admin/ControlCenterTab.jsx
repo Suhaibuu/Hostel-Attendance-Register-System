@@ -1,19 +1,17 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect, useMemo } from 'react';
 import { getStudents, getRooms } from '../../api/students';
 import { getTodayStats } from '../../api/attendance';
 import { 
   Activity, Users, Home, AlertTriangle, Clock, TrendingUp, CheckCircle, 
   XCircle, ChevronRight, Plus, Search, Calendar, RefreshCw, Sparkles, Map
 } from 'lucide-react';
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from 'recharts';
+import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 export default function ControlCenterTab() {
   const [students, setStudents] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [attendanceStats, setAttendanceStats] = useState({ present: 0, absent: 0, unmarked: 0 });
-  const [recentLogs, setRecentLogs] = useState([]);
   const [selectedRoom, setSelectedRoom] = useState(null);
 
   const fetchData = async () => {
@@ -34,22 +32,6 @@ export default function ControlCenterTab() {
         unmarked: stats.unmarked,
       });
 
-      // Activity feed (derived from already-fetched data, no extra API call)
-      const actions = ['Checked In', 'Checked Out', 'Marked Present', 'Late Entry', 'Room Changed'];
-      const feed = studentData.slice(0, 6).map((s, idx) => {
-        const time = new Date();
-        time.setMinutes(time.getMinutes() - idx * 24 - 15);
-        return {
-          id: s._id,
-          student: s.name,
-          rollNo: s.rollNo,
-          roomNo: s.roomNo || 'Unallotted',
-          action: actions[idx % actions.length],
-          time: time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        };
-      });
-      setRecentLogs(feed);
-
     } catch (err) {
       console.error('Error loading Control Center data:', err);
     } finally {
@@ -63,24 +45,23 @@ export default function ControlCenterTab() {
 
   const totalStudents = students.length;
   const occupiedRooms = rooms.length;
-  const occupancyRate = totalStudents ? Math.round((students.filter(s => s.roomNo).length / (occupiedRooms * 4)) * 100) : 0;
 
-  // Chart Data
-  const chartData = [
-    { name: 'Mon', attendance: 88 },
-    { name: 'Tue', attendance: 92 },
-    { name: 'Wed', attendance: 85 },
-    { name: 'Thu', attendance: 94 },
-    { name: 'Fri', attendance: 89 },
-    { name: 'Sat', attendance: 95 },
-    { name: 'Sun', attendance: 91 },
-  ];
-
-  const pieData = [
+  const pieData = useMemo(() => [
     { name: 'Present', value: attendanceStats.present, color: '#10b981' },
     { name: 'Absent', value: attendanceStats.absent, color: '#ef4444' },
     { name: 'Unmarked', value: attendanceStats.unmarked, color: '#f59e0b' },
-  ];
+  ], [attendanceStats]);
+
+  // Pre-index students by room for O(1) lookups instead of O(rooms × students)
+  const studentsByRoom = useMemo(() => {
+    const map = {};
+    students.forEach(s => {
+      if (!s.roomNo || !s.active) return;
+      if (!map[s.roomNo]) map[s.roomNo] = [];
+      map[s.roomNo].push(s);
+    });
+    return map;
+  }, [students]);
 
   // Group rooms by floor (1xx = Floor 1, etc.)
   const getFloor = (roomNo) => {
@@ -90,17 +71,20 @@ export default function ControlCenterTab() {
     return `${Math.floor(num / 100)}F`;
   };
 
-  const floors = rooms.reduce((acc, roomNo) => {
-    const floor = getFloor(roomNo);
-    if (!acc[floor]) acc[floor] = [];
-    const occupants = students.filter(s => s.roomNo === roomNo && s.active);
-    acc[floor].push({
-      roomNo,
-      studentCount: occupants.length,
-      students: occupants
-    });
-    return acc;
-  }, {});
+  // Build floors using the pre-indexed map (O(rooms) instead of O(rooms × students))
+  const floors = useMemo(() => {
+    return rooms.reduce((acc, roomNo) => {
+      const floor = getFloor(roomNo);
+      if (!acc[floor]) acc[floor] = [];
+      const occupants = studentsByRoom[roomNo] || [];
+      acc[floor].push({
+        roomNo,
+        studentCount: occupants.length,
+        students: occupants
+      });
+      return acc;
+    }, {});
+  }, [rooms, studentsByRoom]);
 
   if (loading) {
     return (
@@ -116,10 +100,8 @@ export default function ControlCenterTab() {
       {/* Dynamic Summary Panels */}
       <div>
         {/* Today's Check-Ins */}
-        <motion.div 
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-3xl p-6 border border-slate-200/50 shadow-premium flex flex-col md:flex-row items-center justify-between gap-6"
+        <div 
+          className="bg-white rounded-3xl p-6 border border-slate-200/50 shadow-premium flex flex-col md:flex-row items-center justify-between gap-6 animate-fade-in"
         >
           <div className="flex items-center gap-6">
             <div className="relative w-32 h-32 shrink-0">
@@ -170,7 +152,7 @@ export default function ControlCenterTab() {
               </div>
             </div>
           </div>
-        </motion.div>
+        </div>
       </div>
       {/* Occupancy Map */}
       <div className="bg-white rounded-3xl border border-slate-200/50 p-6 shadow-premium relative">
@@ -202,11 +184,10 @@ export default function ControlCenterTab() {
                   const isSelected = selectedRoom?.roomNo === room.roomNo;
 
                   return (
-                    <motion.div
+                    <div
                       key={room.roomNo}
-                      whileHover={{ scale: 1.02 }}
                       onClick={() => setSelectedRoom(room)}
-                      className={`p-3.5 rounded-2xl border transition-smooth cursor-pointer text-center relative ${
+                      className={`p-3.5 rounded-2xl border transition-smooth cursor-pointer text-center relative hover:scale-[1.02] ${
                         isSelected
                           ? 'bg-primary-50 border-primary-500 shadow-glow'
                           : isFull
@@ -231,7 +212,7 @@ export default function ControlCenterTab() {
                           />
                         ))}
                       </div>
-                    </motion.div>
+                    </div>
                   );
                 })}
               </div>
@@ -240,47 +221,42 @@ export default function ControlCenterTab() {
         </div>
 
         {/* Selected Room Details Drawer */}
-        <AnimatePresence>
-          {selectedRoom && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
-              className="mt-6 p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-4"
-            >
-              <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-                <div>
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Room Details</h4>
-                  <p className="text-xl font-black text-slate-800">Room {selectedRoom.roomNo}</p>
-                </div>
-                <button 
-                  onClick={() => setSelectedRoom(null)}
-                  className="px-4 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-smooth cursor-pointer"
-                >
-                  Close Map Overlay
-                </button>
+        {selectedRoom && (
+          <div
+            className="mt-6 p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-4 animate-fade-in"
+          >
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div>
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Room Details</h4>
+                <p className="text-xl font-black text-slate-800">Room {selectedRoom.roomNo}</p>
               </div>
+              <button 
+                onClick={() => setSelectedRoom(null)}
+                className="px-4 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-smooth cursor-pointer"
+              >
+                Close Map Overlay
+              </button>
+            </div>
 
-              {selectedRoom.students.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {selectedRoom.students.map((student) => (
-                    <div key={student._id || student.rollNo} className="p-3 bg-white border border-slate-200/60 rounded-xl flex items-center justify-between">
-                      <div>
-                        <p className="text-xs font-bold text-slate-800">{student.name}</p>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{student.rollNo}</p>
-                      </div>
-                      <span className="text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-lg px-2.5 py-0.5">
-                        {student.department}
-                      </span>
+            {selectedRoom.students.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {selectedRoom.students.map((student) => (
+                  <div key={student._id || student.rollNo} className="p-3 bg-white border border-slate-200/60 rounded-xl flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">{student.name}</p>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{student.rollNo}</p>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-slate-500 font-medium italic">No students currently allotted to this room.</p>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+                    <span className="text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-lg px-2.5 py-0.5">
+                      {student.department}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500 font-medium italic">No students currently allotted to this room.</p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

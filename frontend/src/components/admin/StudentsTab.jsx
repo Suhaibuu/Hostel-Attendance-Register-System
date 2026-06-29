@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { getStudents, createStudent, updateStudent, deactivateStudent, deleteStudent } from '../../api/students';
+import { useState, useEffect, useMemo } from 'react';
+import { getStudents, createStudent, updateStudent, deactivateStudent, reactivateStudent, deleteStudent } from '../../api/students';
 import Card from '../ui/Card';
 import Badge from '../ui/Badge';
 import Button from '../ui/Button';
@@ -9,7 +9,7 @@ import AssignRoomModal from './AssignRoomModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, SlidersHorizontal, Plus, Users, UserMinus, UserCheck, 
-  Trash2, Edit3, CalendarDays, KeyRound, MapPin, Layers 
+  Trash2, Edit3, CalendarDays, KeyRound, MapPin, Layers, RotateCcw 
 } from 'lucide-react';
 
 const avatarColors = ['bg-indigo-500', 'bg-emerald-500', 'bg-violet-500', 'bg-amber-500', 'bg-pink-500'];
@@ -20,14 +20,11 @@ const initials = (n) => {
   return p.length === 1 ? p[0].slice(0, 2).toUpperCase() : (p[0][0] + p[p.length - 1][0]).toUpperCase();
 };
 
-function StudentRow({ s, idx, onEdit, onDeactivate, onHistory, onAssignRoom, onDelete }) {
+function StudentRow({ s, idx, onEdit, onDeactivate, onReactivate, onHistory, onAssignRoom, onDelete }) {
   const isEven = idx % 2 === 0;
 
   return (
-    <motion.tr 
-      initial={{ opacity: 0, y: 4 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2, delay: Math.min(idx * 0.03, 0.3) }}
+    <tr 
       className={`border-b border-slate-100 hover:bg-slate-50/50 transition-smooth group`}
     >
       <td className="py-4 pl-4">
@@ -54,14 +51,12 @@ function StudentRow({ s, idx, onEdit, onDeactivate, onHistory, onAssignRoom, onD
             {s.roomNo}
           </span>
         ) : (
-          <motion.button 
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+          <button 
             onClick={() => onAssignRoom(s)} 
-            className="text-[10px] font-black uppercase tracking-wider text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-2.5 py-1.5 cursor-pointer transition-smooth hover:bg-amber-100"
+            className="text-[10px] font-black uppercase tracking-wider text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-2.5 py-1.5 cursor-pointer transition-smooth hover:bg-amber-100 hover:scale-[1.02] active:scale-[0.98]"
           >
             Assign Room
-          </motion.button>
+          </button>
         )}
       </td>
       <td className="py-4 text-xs font-bold text-slate-600 hidden md:table-cell">{s.department || '—'}</td>
@@ -103,6 +98,17 @@ function StudentRow({ s, idx, onEdit, onDeactivate, onHistory, onAssignRoom, onD
             </button>
           )}
 
+          {onReactivate && !s.active && (
+            <button 
+              onClick={() => onReactivate(s._id)}
+              title="Roll back to Active"
+              className="px-2.5 py-1 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-600 rounded-lg text-slate-500 border border-slate-200/20 text-[10px] font-black uppercase tracking-wider cursor-pointer transition-smooth flex items-center gap-1"
+            >
+              <RotateCcw className="w-3 h-3" />
+              Reactivate
+            </button>
+          )}
+
           {onDelete && (
             <button 
               onClick={() => onDelete(s)} 
@@ -114,11 +120,11 @@ function StudentRow({ s, idx, onEdit, onDeactivate, onHistory, onAssignRoom, onD
           )}
         </div>
       </td>
-    </motion.tr>
+    </tr>
   );
 }
 
-function StudentTable({ rows, loading, onEdit, onDeactivate, onHistory, onAssignRoom, onDelete }) {
+function StudentTable({ rows, loading, onEdit, onDeactivate, onReactivate, onHistory, onAssignRoom, onDelete }) {
   return (
     <Card padding="none" className="overflow-hidden border border-slate-200/50 rounded-3xl shadow-premium bg-white">
       {loading ? (
@@ -152,7 +158,8 @@ function StudentTable({ rows, loading, onEdit, onDeactivate, onHistory, onAssign
                   s={s} 
                   idx={idx} 
                   onEdit={onEdit} 
-                  onDeactivate={onDeactivate} 
+                  onDeactivate={onDeactivate}
+                  onReactivate={onReactivate}
                   onHistory={onHistory} 
                   onAssignRoom={onAssignRoom} 
                   onDelete={onDelete} 
@@ -185,9 +192,20 @@ export default function StudentsTab() {
   useEffect(() => { load(); }, []);
 
   const q = search.toLowerCase();
-  const activeStudents     = students.filter((s) =>  s.active && !!s.roomNo && (s.name.toLowerCase().includes(q) || s.roomNo.toLowerCase().includes(q) || s.rollNo.toLowerCase().includes(q)));
-  const unallottedStudents = students.filter((s) =>  s.active && !s.roomNo && (s.name.toLowerCase().includes(q) || s.rollNo.toLowerCase().includes(q)));
-  const alumniStudents     = students.filter((s) => !s.active && (s.name.toLowerCase().includes(q) || (s.roomNo || '').toLowerCase().includes(q) || s.rollNo.toLowerCase().includes(q)));
+  // Single-pass categorization instead of 3 separate filter passes
+  const { activeStudents, unallottedStudents, alumniStudents } = useMemo(() => {
+    const active = [];
+    const unallotted = [];
+    const alumni = [];
+    for (const s of students) {
+      const matchesSearch = !q || s.name.toLowerCase().includes(q) || s.rollNo.toLowerCase().includes(q) || (s.roomNo || '').toLowerCase().includes(q);
+      if (!matchesSearch) continue;
+      if (!s.active) alumni.push(s);
+      else if (s.roomNo) active.push(s);
+      else unallotted.push(s);
+    }
+    return { activeStudents: active, unallottedStudents: unallotted, alumniStudents: alumni };
+  }, [students, q]);
   const displayed          = subTab === 'active' ? activeStudents : subTab === 'unallotted' ? unallottedStudents : alumniStudents;
 
   const handleSave = async (form) => {
@@ -215,6 +233,16 @@ export default function StudentsTab() {
     }
   };
 
+  const handleReactivate = async (id) => {
+    if (!window.confirm('Reactivate this student? They will be moved back to active status.')) return;
+    try {
+      await reactivateStudent(id);
+      load();
+    } catch (err) {
+      alert(err.message || 'Failed to reactivate student');
+    }
+  };
+
   return (
     <div className="space-y-6">
       
@@ -235,9 +263,9 @@ export default function StudentsTab() {
         {/* Dynamic sliding sub-tabs */}
         <div className="flex gap-1.5 p-1 bg-slate-100 rounded-xl flex-wrap w-full sm:w-auto justify-start sm:justify-end">
           {[
-            { id: 'active', label: 'Allotted', count: students.filter(s=>s.active && !!s.roomNo).length },
-            { id: 'unallotted', label: 'Unallotted', count: students.filter(s=>s.active && !s.roomNo).length },
-            { id: 'alumni', label: 'Passed Out', count: students.filter(s=>!s.active).length },
+            { id: 'active', label: 'Allotted', count: activeStudents.length },
+            { id: 'unallotted', label: 'Unallotted', count: unallottedStudents.length },
+            { id: 'alumni', label: 'Passed Out', count: alumniStudents.length },
           ].map((t) => {
             const isSelected = subTab === t.id;
             return (
@@ -269,6 +297,7 @@ export default function StudentsTab() {
         loading={loading}
         onEdit={(subTab === 'active' || subTab === 'unallotted') ? (s) => setModal(s) : null}
         onDeactivate={(subTab === 'active' || subTab === 'unallotted') ? handleDeactivate : null}
+        onReactivate={subTab === 'alumni' ? handleReactivate : null}
         onHistory={setHistoryStudent}
         onAssignRoom={setAssignRoomModal}
         onDelete={handleDelete}

@@ -1,17 +1,19 @@
-import { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useEffect, useCallback, memo, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getRooms, createStudent } from '../api/students';
+import { getRooms, createStudent, invalidateRoomsCache } from '../api/students';
 import { getRoomAttendance, markAttendance, getTodayStats } from '../api/attendance';
 import PageWrapper from '../components/layout/PageWrapper';
 import TopBar from '../components/layout/TopBar';
 import Spinner from '../components/ui/Spinner';
 import Toast from '../components/ui/Toast';
 import StudentHistoryModal from '../components/admin/StudentHistoryModal';
-import { motion, AnimatePresence } from 'framer-motion';
+import ControlCenterTab from '../components/admin/ControlCenterTab';
+import AttendanceTab from '../components/admin/AttendanceTab';
+import { AnimatePresence } from 'framer-motion';
 import {
   Users, Home, CheckCircle2, XCircle, Plus, Calendar,
-  LogOut, ArrowRight, ShieldCheck, History, ChevronLeft, ChevronRight,
-  AlertTriangle,
+  LogOut, ArrowRight, ShieldCheck, History,
+  AlertTriangle, LayoutDashboard, ClipboardCheck
 } from 'lucide-react';
 
 // ─── Helpers ───────────────────────────────────────────
@@ -34,16 +36,16 @@ const getInitials = (name) => {
 };
 
 // ─── Date Picker (inline) ──────────────────────────────
-function DateSelector({ value, onChange }) {
+const DateSelector = memo(function DateSelector({ value, onChange }) {
   const today = todayISO();
   const [open, setOpen] = useState(false);
 
   // Generate last 30 days
-  const days = Array.from({ length: 30 }, (_, i) => {
+  const days = useMemo(() => Array.from({ length: 30 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - i);
     return d.toISOString().slice(0, 10);
-  });
+  }), []);
 
   const isToday = value === today;
 
@@ -63,47 +65,39 @@ function DateSelector({ value, onChange }) {
         {!isToday && <span className="ml-1 bg-amber-200 text-amber-800 text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wide">Past</span>}
       </button>
 
-      <AnimatePresence>
-        {open && (
-          <>
-            <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-            <motion.div
-              initial={{ opacity: 0, y: -6, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -6, scale: 0.97 }}
-              transition={{ duration: 0.15 }}
-              className="absolute left-0 top-full mt-2 z-40 bg-white border border-slate-200 rounded-2xl shadow-xl p-3 w-56"
-            >
-              <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2 px-1">Select Date</p>
-              <div className="space-y-0.5 max-h-64 overflow-y-auto">
-                {days.map(d => (
-                  <button
-                    key={d}
-                    onClick={() => { onChange(d); setOpen(false); }}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center justify-between ${
-                      d === value
-                        ? 'bg-primary-600 text-white'
-                        : 'hover:bg-slate-50 text-slate-700'
-                    }`}
-                  >
-                    <span>{d === today ? '📅 Today' : formatDisplayDate(d)}</span>
-                    {d === value && <CheckCircle2 className="w-3.5 h-3.5" />}
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 top-full mt-2 z-40 bg-white border border-slate-200 rounded-2xl shadow-xl p-3 w-56">
+            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2 px-1">Select Date</p>
+            <div className="space-y-0.5 max-h-64 overflow-y-auto">
+              {days.map(d => (
+                <button
+                  key={d}
+                  onClick={() => { onChange(d); setOpen(false); }}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center justify-between ${
+                    d === value
+                      ? 'bg-primary-600 text-white'
+                      : 'hover:bg-slate-50 text-slate-700'
+                  }`}
+                >
+                  <span>{d === today ? '📅 Today' : formatDisplayDate(d)}</span>
+                  {d === value && <CheckCircle2 className="w-3.5 h-3.5" />}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
-}
+});
 
 // ─── Add Student Modal ─────────────────────────────────
 function AddStudentModal({ onSave, onClose }) {
   const [form, setForm] = useState({
-    name: '', rollNo: '', roomNo: '',
-    department: 'Computer Science (CSE)', level: 'UG', category: 'General',
+    name: '', rollNo: '', roomNo: '', phone: '',
+    department: 'Computer Science (CSE)', level: 'UG', semester: 'S1', category: 'General',
   });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -114,6 +108,7 @@ function AddStudentModal({ onSave, onClose }) {
     const e2 = {};
     if (!form.name.trim()) e2.name = 'Required';
     if (!form.rollNo.trim()) e2.rollNo = 'Required';
+    if (form.phone && !/^\d{10}$/.test(form.phone)) e2.phone = 'Must be a 10-digit number';
     if (Object.keys(e2).length) { setErrors(e2); return; }
     setSaving(true);
     try { await onSave(form); }
@@ -126,8 +121,7 @@ function AddStudentModal({ onSave, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+      <div
         className="relative w-full max-w-[420px] bg-white rounded-3xl shadow-2xl p-6 border border-slate-100"
         onClick={e => e.stopPropagation()}
       >
@@ -146,7 +140,7 @@ function AddStudentModal({ onSave, onClose }) {
             <input type="text" value={form.rollNo} onChange={e => set('rollNo', e.target.value.toUpperCase())} className={`${inp} uppercase`} placeholder="CST221" required />
             {errors.rollNo && <p className="text-xs text-red-500 mt-1">{errors.rollNo}</p>}
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Room No</label>
               <input type="text" value={form.roomNo} onChange={e => set('roomNo', e.target.value)} className={inp} placeholder="101" />
@@ -154,10 +148,33 @@ function AddStudentModal({ onSave, onClose }) {
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Program</label>
               <select value={form.level} onChange={e => set('level', e.target.value)} className={inp}>
-                <option value="UG">UG (B.Tech)</option>
-                <option value="PG">PG (M.Tech)</option>
+                <option value="UG">UG</option>
+                <option value="PG">PG</option>
               </select>
             </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Semester</label>
+              <select value={form.semester} onChange={e => set('semester', e.target.value)} className={inp}>
+                <option value="S1">S1</option>
+                <option value="S3">S3</option>
+                <option value="S7">S7</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Phone Number</label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400 pointer-events-none">+91</span>
+              <input 
+                type="tel" 
+                value={form.phone} 
+                onChange={(e) => set('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
+                placeholder="9876543210"
+                maxLength={10}
+                className={`${inp} pl-12`}
+              />
+            </div>
+            {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
           </div>
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Department</label>
@@ -171,7 +188,7 @@ function AddStudentModal({ onSave, onClose }) {
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Category</label>
             <select value={form.category} onChange={e => set('category', e.target.value)} className={inp}>
-              <option>General</option><option>OBC</option><option>SC</option><option>ST</option><option>OEC</option>
+              <option>General</option><option>OBC</option><option>SC</option><option>ST</option><option>OEC</option><option>Fisheries</option>
             </select>
           </div>
           {errors._form && <p className="text-sm text-red-500 text-center">{errors._form}</p>}
@@ -182,18 +199,16 @@ function AddStudentModal({ onSave, onClose }) {
             </button>
           </div>
         </form>
-      </motion.div>
+      </div>
     </div>
   );
 }
 
-// ─── Student Card (memoized for perf) ─────────────────
+// ─── Student Card (memoized for perf — no framer-motion layout) ─────────────────
 const StudentCard = memo(function StudentCard({ s, status, onToggle, onHistory, selectedRoom }) {
   return (
-    <motion.div
-      layout
-      whileHover={{ y: -1 }}
-      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${
+    <div
+      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all hover:-translate-y-px ${
         status === true  ? 'bg-emerald-50/80 border-emerald-300/60' :
         status === false ? 'bg-red-50/80 border-red-300/60' :
         'bg-slate-50/50 border-slate-200/80 hover:border-slate-300/80'
@@ -227,13 +242,38 @@ const StudentCard = memo(function StudentCard({ s, status, onToggle, onHistory, 
           <XCircle className="w-4 h-4" />
         </button>
       </div>
-    </motion.div>
+    </div>
+  );
+});
+
+// ─── Room Button (memoized) ────────────────────────────
+const RoomButton = memo(function RoomButton({ room, isSelected, highlight, isToday, onClick }) {
+  const hl = isToday ? highlight : null;
+  const dotClass = !isToday ? 'bg-slate-300'
+    : hl === 'fully' ? 'bg-emerald-500'
+    : hl === 'partially' ? 'bg-amber-500'
+    : 'bg-slate-300';
+
+  return (
+    <button
+      onClick={onClick}
+      className={`relative rounded-2xl border py-3.5 font-extrabold text-sm transition-smooth cursor-pointer flex flex-col items-center justify-center hover:scale-[1.02] active:scale-[0.98] ${
+        isSelected ? 'bg-primary-600 text-white border-primary-600 shadow-glow' :
+        hl === 'fully' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+        hl === 'partially' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+        'bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300'
+      }`}
+    >
+      <span>{room}</span>
+      <span className={`absolute top-1.5 right-1.5 h-2 w-2 rounded-full ${dotClass}`} />
+    </button>
   );
 });
 
 // ─── Main Page ─────────────────────────────────────────
 export default function WardenPage() {
   const { user, logout } = useAuth();
+  const [activeTab, setActiveTab] = useState('mark');
 
   const [rooms, setRooms]               = useState([]);
   const [roomsLoading, setRoomsLoading] = useState(true);
@@ -293,14 +333,16 @@ export default function WardenPage() {
     setMarks(updated);
   }, [students]);
 
-  const markedCount = Object.values(marks).filter(v => v !== null).length;
+  const markedCount = useMemo(
+    () => Object.values(marks).filter(v => v !== null).length,
+    [marks]
+  );
   const isToday = selectedDate === todayISO();
 
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
       const records = Object.entries(marks)
-        .filter(([, v]) => v !== null)
         .map(([studentId, present]) => ({ studentId, present }));
       await markAttendance({ roomNo: selectedRoom, date: selectedDate, records });
       setToast({ message: `✓ Attendance saved for Room ${selectedRoom} · ${formatDisplayDate(selectedDate)}`, type: 'success' });
@@ -316,19 +358,17 @@ export default function WardenPage() {
     await createStudent(form);
     setShowAddModal(false);
     setToast({ message: '✓ Student added successfully', type: 'success' });
-    const d = await getRooms();
+    // Force refresh rooms since a new student may have a new room
+    const d = await getRooms(true);
     setRooms(d.rooms || []);
     await fetchStats();
     if (selectedRoom === form.roomNo) await loadRoom(form.roomNo, selectedDate);
   };
 
-  const roomDot = (r) => {
-    if (!isToday) return 'bg-slate-300';
-    const s = todayStats.roomHighlight[r];
-    if (s === 'fully') return 'bg-emerald-500';
-    if (s === 'partially') return 'bg-amber-500';
-    return 'bg-slate-300';
-  };
+  // Memoize room click handlers to prevent re-renders
+  const handleRoomClick = useCallback((room) => {
+    loadRoom(room, selectedDate);
+  }, [loadRoom, selectedDate]);
 
   return (
     <PageWrapper>
@@ -341,154 +381,183 @@ export default function WardenPage() {
               <span className="text-xs font-bold text-slate-800">{user?.name || 'Warden'}</span>
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Hostel Warden</span>
             </div>
-            <motion.button
-              whileTap={{ scale: 0.95 }}
+            <button
               onClick={logout}
-              className="p-2 bg-slate-100 hover:bg-red-50 hover:text-red-600 rounded-xl text-slate-500 transition-smooth flex items-center gap-1.5 text-xs font-bold border border-slate-200/40 cursor-pointer"
+              className="p-2 bg-slate-100 hover:bg-red-50 hover:text-red-600 rounded-xl text-slate-500 transition-smooth flex items-center gap-1.5 text-xs font-bold border border-slate-200/40 cursor-pointer active:scale-95"
             >
               <LogOut className="w-4 h-4" />
               <span className="hidden sm:inline">Logout</span>
-            </motion.button>
+            </button>
           </div>
         }
       />
 
       <main className="flex-1 w-full max-w-5xl mx-auto px-4 py-6 pb-28 space-y-6">
 
-        {/* Stats (today only) */}
-        {isToday && (
-          <div className="grid grid-cols-3 gap-3 md:gap-5">
+        {/* Modern Sliding Navigation Tabs */}
+        <div className="w-full overflow-x-auto scrollbar-none pb-1">
+          <div className="flex gap-2 p-1.5 bg-slate-200/60 m-0 rounded-2xl w-max border border-slate-200/10">
             {[
-              { label: 'Present', val: todayStats.present, color: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
-              { label: 'Absent',  val: todayStats.absent,  color: 'bg-red-50 text-red-700 border-red-100' },
-              { label: 'Unmarked',val: todayStats.unmarked, color: 'bg-amber-50 text-amber-700 border-amber-100' },
-            ].map(stat => (
-              <div key={stat.label} className={`p-4 md:p-5 rounded-2xl md:rounded-3xl border ${stat.color} flex items-center justify-between`}>
-                <div>
-                  <p className="text-[9px] md:text-[10px] font-extrabold uppercase tracking-widest opacity-70">{stat.label}</p>
-                  <h4 className="text-2xl md:text-3xl font-black mt-1 leading-none">{stat.val}</h4>
-                </div>
-                <CheckCircle2 className="w-5 h-5 opacity-40" />
-              </div>
-            ))}
+              { id: 'mark', label: 'Mark Attendance', icon: Home },
+              { id: 'occupancy', label: 'Occupancy Map', icon: LayoutDashboard },
+              { id: 'logs', label: 'Attendance Logs', icon: ClipboardCheck },
+            ].map((t) => {
+              const Icon = t.icon;
+              const isSelected = activeTab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setActiveTab(t.id)}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-smooth relative cursor-pointer shrink-0 ${
+                    isSelected ? 'text-white' : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  <Icon className="w-4 h-4 shrink-0" />
+                  <span>{t.label}</span>
+                  {isSelected && (
+                    <div 
+                      className="absolute inset-0 bg-primary-600 rounded-xl shadow-glow z-[-1] transition-all" 
+                    />
+                  )}
+                </button>
+              );
+            })}
           </div>
-        )}
-
-        {/* Room Selection */}
-        <div className="bg-white rounded-3xl border border-slate-200/50 p-6 shadow-premium">
-          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-5">
-            <div>
-              <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
-                <Home className="w-4 h-4" /> Select Room
-              </h2>
-              <p className="text-xs text-slate-500 mt-1">Pick a room and date to mark attendance</p>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <DateSelector value={selectedDate} onChange={setSelectedDate} />
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="py-2 px-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-smooth flex items-center gap-1.5 cursor-pointer"
-              >
-                <Plus className="w-4 h-4" /> Add Resident
-              </button>
-            </div>
-          </div>
-
-          {/* Past date banner */}
-          {!isToday && (
-            <div className="mb-4 flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
-              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-              <p className="text-xs text-amber-700 font-semibold">
-                Marking attendance for <span className="font-black">{formatDisplayDate(selectedDate)}</span> — past date
-              </p>
-            </div>
-          )}
-
-          {roomsLoading ? (
-            <div className="flex items-center gap-2 text-xs text-slate-400 py-6 justify-center">
-              <Spinner size="sm" color="indigo" /> Loading rooms...
-            </div>
-          ) : rooms.length === 0 ? (
-            <p className="text-xs text-slate-400 text-center py-6">No active rooms</p>
-          ) : (
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2.5">
-              {rooms.map(r => {
-                const isSelected = r === selectedRoom;
-                const hl = isToday ? todayStats.roomHighlight[r] : null;
-                return (
-                  <motion.button
-                    key={r}
-                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                    onClick={() => loadRoom(r, selectedDate)}
-                    className={`relative rounded-2xl border py-3.5 font-extrabold text-sm transition-smooth cursor-pointer flex flex-col items-center justify-center ${
-                      isSelected ? 'bg-primary-600 text-white border-primary-600 shadow-glow' :
-                      hl === 'fully' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                      hl === 'partially' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                      'bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300'
-                    }`}
-                  >
-                    <span>{r}</span>
-                    <span className={`absolute top-1.5 right-1.5 h-2 w-2 rounded-full ${roomDot(r)}`} />
-                  </motion.button>
-                );
-              })}
-            </div>
-          )}
         </div>
 
-        {/* Student List */}
-        {selectedRoom && (
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-            {studentsLoading ? (
-              <div className="flex flex-col items-center justify-center gap-2 text-slate-400 py-16">
-                <Spinner size="md" color="indigo" />
-                <p className="text-xs font-medium">Loading residents...</p>
-              </div>
-            ) : students.length === 0 ? (
-              <div className="bg-white rounded-3xl border border-slate-200/50 p-12 text-center shadow-premium">
-                <Users className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                <p className="text-sm text-slate-500 font-bold">No active students in Room {selectedRoom}</p>
-              </div>
-            ) : (
-              <div className="bg-white rounded-3xl border border-slate-200/50 p-6 shadow-premium space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base font-black text-slate-800">Room {selectedRoom}</h3>
-                    <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded-lg text-[10px] font-bold uppercase">
-                      {students.length} Residents
-                    </span>
-                  </div>
-                  <button
-                    onClick={markAllPresent}
-                    className="py-1.5 px-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-bold transition-smooth flex items-center gap-1 cursor-pointer"
-                  >
-                    <ShieldCheck className="w-4 h-4" /> All Present
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {students.map(s => (
-                    <StudentCard
-                      key={s.studentId}
-                      s={s}
-                      status={marks[s.studentId]}
-                      onToggle={toggleMark}
-                      onHistory={setHistoryStudent}
-                      selectedRoom={selectedRoom}
-                    />
+        {/* Tab Contents */}
+        <div key={activeTab} className="animate-fade-in space-y-6">
+          {activeTab === 'mark' && (
+            <>
+              {/* Stats (today only) */}
+              {isToday && (
+                <div className="grid grid-cols-3 gap-3 md:gap-5">
+                  {[
+                    { label: 'Present', val: todayStats.present, color: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
+                    { label: 'Absent',  val: todayStats.absent,  color: 'bg-red-50 text-red-700 border-red-100' },
+                    { label: 'Unmarked',val: todayStats.unmarked, color: 'bg-amber-50 text-amber-700 border-amber-100' },
+                  ].map(stat => (
+                    <div key={stat.label} className={`p-4 md:p-5 rounded-2xl md:rounded-3xl border ${stat.color} flex items-center justify-between`}>
+                      <div>
+                        <p className="text-[9px] md:text-[10px] font-extrabold uppercase tracking-widest opacity-70">{stat.label}</p>
+                        <h4 className="text-2xl md:text-3xl font-black mt-1 leading-none">{stat.val}</h4>
+                      </div>
+                      <CheckCircle2 className="w-5 h-5 opacity-40" />
+                    </div>
                   ))}
                 </div>
+              )}
+
+              {/* Room Selection */}
+              <div className="bg-white rounded-3xl border border-slate-200/50 p-6 shadow-premium">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-5">
+                  <div>
+                    <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
+                      <Home className="w-4 h-4" /> Select Room
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-1">Pick a room and date to mark attendance</p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <DateSelector value={selectedDate} onChange={setSelectedDate} />
+                    <button
+                      onClick={() => setShowAddModal(true)}
+                      className="py-2 px-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-smooth flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" /> Add Resident
+                    </button>
+                  </div>
+                </div>
+
+                {/* Past date banner */}
+                {!isToday && (
+                  <div className="mb-4 flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <p className="text-xs text-amber-700 font-semibold">
+                      Marking attendance for <span className="font-black">{formatDisplayDate(selectedDate)}</span> — past date
+                    </p>
+                  </div>
+                )}
+
+                {roomsLoading ? (
+                  <div className="flex items-center gap-2 text-xs text-slate-400 py-6 justify-center">
+                    <Spinner size="sm" color="indigo" /> Loading rooms...
+                  </div>
+                ) : rooms.length === 0 ? (
+                  <p className="text-xs text-slate-400 text-center py-6">No active rooms</p>
+                ) : (
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2.5">
+                    {rooms.map(r => (
+                      <RoomButton
+                        key={r}
+                        room={r}
+                        isSelected={r === selectedRoom}
+                        highlight={todayStats.roomHighlight[r]}
+                        isToday={isToday}
+                        onClick={() => handleRoomClick(r)}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </motion.div>
-        )}
+
+              {/* Student List */}
+              {selectedRoom && (
+                <div className="space-y-4 animate-fade-in">
+                  {studentsLoading ? (
+                    <div className="flex flex-col items-center justify-center gap-2 text-slate-400 py-16">
+                      <Spinner size="md" color="indigo" />
+                      <p className="text-xs font-medium">Loading residents...</p>
+                    </div>
+                  ) : students.length === 0 ? (
+                    <div className="bg-white rounded-3xl border border-slate-200/50 p-12 text-center shadow-premium">
+                      <Users className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                      <p className="text-sm text-slate-500 font-bold">No active students in Room {selectedRoom}</p>
+                    </div>
+                  ) : (
+                    <div className="bg-white rounded-3xl border border-slate-200/50 p-6 shadow-premium space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-base font-black text-slate-800">Room {selectedRoom}</h3>
+                          <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded-lg text-[10px] font-bold uppercase">
+                            {students.length} Residents
+                          </span>
+                        </div>
+                        <button
+                          onClick={markAllPresent}
+                          className="py-1.5 px-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-bold transition-smooth flex items-center gap-1 cursor-pointer"
+                        >
+                          <ShieldCheck className="w-4 h-4" /> All Present
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {students.map(s => (
+                          <StudentCard
+                            key={s.studentId}
+                            s={s}
+                            status={marks[s.studentId]}
+                            onToggle={toggleMark}
+                            onHistory={setHistoryStudent}
+                            selectedRoom={selectedRoom}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
+          {activeTab === 'occupancy' && <ControlCenterTab />}
+          {activeTab === 'logs' && <AttendanceTab />}
+        </div>
       </main>
 
       {/* Floating submit bar */}
-      {selectedRoom && students.length > 0 && (
-        <motion.div
-          initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-          className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[95%] max-w-xl bg-slate-900/95 backdrop-blur text-white rounded-3xl border border-slate-800 shadow-[0_15px_40px_rgba(0,0,0,0.3)] flex items-center justify-between px-6 py-4"
+      {activeTab === 'mark' && selectedRoom && students.length > 0 && (
+        <div
+          className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[95%] max-w-xl bg-slate-900/95 backdrop-blur text-white rounded-3xl border border-slate-800 shadow-[0_15px_40px_rgba(0,0,0,0.3)] flex items-center justify-between px-6 py-4 animate-slide-up"
         >
           <div className="flex flex-col">
             <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest">
@@ -497,13 +566,13 @@ export default function WardenPage() {
             <span className="text-sm font-bold mt-0.5">{markedCount} of {students.length} Marked</span>
           </div>
           <button
-            disabled={markedCount === 0 || submitting}
+            disabled={submitting}
             onClick={handleSubmit}
             className="py-2.5 px-5 bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-800 text-white disabled:text-slate-500 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-smooth cursor-pointer disabled:cursor-not-allowed"
           >
             {submitting ? <Spinner size="sm" color="white" /> : <>Save Attendance <ArrowRight className="w-4 h-4" /></>}
           </button>
-        </motion.div>
+        </div>
       )}
 
       <AnimatePresence>

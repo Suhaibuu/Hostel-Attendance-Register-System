@@ -7,7 +7,7 @@ import Spinner from '../components/ui/Spinner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   User, Calendar, LogOut, CheckCircle, XCircle, Clock, 
-  MapPin, BookOpen, Layers, Award, Sparkles, TrendingUp 
+  MapPin, BookOpen, Layers, Award, Sparkles 
 } from 'lucide-react';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -75,12 +75,7 @@ export default function StudentProfilePage() {
   const cells = monthData ? buildCalendar(selectedMonth, monthData.records) : [];
   const presentDates = monthData?.records.filter(r => r.present).map(r => r.date) || [];
 
-  const pct = monthData?.totalDays
-    ? Math.round((monthData.presentDays / monthData.totalDays) * 100)
-    : 0;
 
-  // Streak simulation based on records count to look realistic and encourage attendance
-  const currentStreak = presentDates.length > 0 ? Math.min(presentDates.length, 5) : 0;
 
   return (
     <div className="min-h-screen bg-slate-50 relative overflow-hidden pb-12">
@@ -155,21 +150,7 @@ export default function StudentProfilePage() {
           </div>
         </motion.div>
 
-        {/* Dashboard Stat Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white rounded-3xl border border-slate-200/50 p-5 shadow-premium text-center flex flex-col items-center justify-center relative overflow-hidden"
-        >
-          <div className="p-3 bg-indigo-50 rounded-2xl mb-2.5">
-            <TrendingUp className="w-5 h-5 text-indigo-600" />
-          </div>
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Present Ratio</p>
-          <h4 className="text-2xl font-black text-slate-800 mt-1 font-sans">
-            {pct}% <span className="text-xs font-semibold text-slate-400">this month</span>
-          </h4>
-        </motion.div>
+
 
         {/* Attendance Main Report section */}
         <motion.div

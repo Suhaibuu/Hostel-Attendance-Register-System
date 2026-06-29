@@ -28,5 +28,7 @@ const attendanceSchema = new mongoose.Schema({
 attendanceSchema.index({ studentId: 1, date: 1 }, { unique: true });
 // Fast lookups by date alone (today stats, reports)
 attendanceSchema.index({ date: 1 });
+// Fast range queries for monthly reports (date range + studentId)
+attendanceSchema.index({ date: 1, studentId: 1, present: 1 });
 
 module.exports = mongoose.model('Attendance', attendanceSchema);

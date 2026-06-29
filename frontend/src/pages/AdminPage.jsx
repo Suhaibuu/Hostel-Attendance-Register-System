@@ -7,7 +7,6 @@ import StudentsTab from '../components/admin/StudentsTab';
 import AttendanceTab from '../components/admin/AttendanceTab';
 import ControlCenterTab from '../components/admin/ControlCenterTab';
 import { LayoutDashboard, Users, ClipboardCheck, LogOut } from 'lucide-react';
-import { motion } from 'framer-motion';
 
 const tabs = [
   { id: 'overview', label: 'Control Center', icon: LayoutDashboard },
@@ -30,14 +29,13 @@ export default function AdminPage() {
               <span className="text-xs font-bold text-slate-800">{user?.name || 'Administrator'}</span>
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Hostel Admin</span>
             </div>
-            <motion.button 
-              whileTap={{ scale: 0.95 }}
+            <button 
               onClick={logout}
-              className="p-2 bg-slate-100 hover:bg-red-50 hover:text-red-600 rounded-xl text-slate-500 transition-smooth flex items-center gap-1.5 text-xs font-bold border border-slate-200/40 cursor-pointer"
+              className="p-2 bg-slate-100 hover:bg-red-50 hover:text-red-600 rounded-xl text-slate-500 transition-smooth flex items-center gap-1.5 text-xs font-bold border border-slate-200/40 cursor-pointer active:scale-95"
             >
               <LogOut className="w-4 h-4" />
               <span className="hidden sm:inline">Logout</span>
-            </motion.button>
+            </button>
           </div>
         }
       />
@@ -60,10 +58,8 @@ export default function AdminPage() {
                   <Icon className="w-4 h-4 shrink-0" />
                   <span>{t.label}</span>
                   {isSelected && (
-                    <motion.div 
-                      layoutId="adminTabBg" 
-                      className="absolute inset-0 bg-primary-600 rounded-xl shadow-glow z-[-1]" 
-                      transition={{ type: "spring", stiffness: 350, damping: 28 }}
+                    <div 
+                      className="absolute inset-0 bg-primary-600 rounded-xl shadow-glow z-[-1] transition-all" 
                     />
                   )}
                 </button>
@@ -73,17 +69,14 @@ export default function AdminPage() {
         </div>
 
         {/* Tab content panel wrapper with subtle motion reveal */}
-        <motion.div
+        <div
           key={activeTab}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-          className="min-h-[60vh]"
+          className="min-h-[60vh] animate-fade-in"
         >
           {activeTab === 'overview' && <ControlCenterTab />}
           {activeTab === 'students' && <StudentsTab />}
           {activeTab === 'attendance' && <AttendanceTab />}
-        </motion.div>
+        </div>
       </main>
     </PageWrapper>
   );

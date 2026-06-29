@@ -24,11 +24,9 @@ router.get('/me', async (req, res) => {
     if (req.user.role !== 'student') {
       return res.status(403).json({ message: 'Student access only' });
     }
-    const student = await Student.findById(req.user.id);
+    const student = await Student.findById(req.user.id, { passwordHash: 0 }).lean();
     if (!student) return res.status(404).json({ message: 'Student not found' });
-    // Never expose passwordHash
-    const { passwordHash, ...safe } = student.toObject();
-    res.json(safe);
+    res.json(student);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -43,7 +41,8 @@ router.get('/', async (req, res) => {
     if (req.query.room) filter.roomNo = req.query.room;
 
     const students = await Student.find(filter, { passwordHash: 0 })
-      .sort({ roomNo: 1, name: 1 });
+      .sort({ roomNo: 1, name: 1 })
+      .lean();
     res.json(students);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -71,7 +70,7 @@ router.get('/room/:roomNo', async (req, res) => {
     const students = await Student.find(
       { roomNo: req.params.roomNo, active: true },
       { passwordHash: 0 }
-    ).sort({ name: 1 });
+    ).sort({ name: 1 }).lean();
     res.json(students);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -81,7 +80,7 @@ router.get('/room/:roomNo', async (req, res) => {
 // ── GET /api/students/:id ────────────────────────────────
 router.get('/:id', async (req, res) => {
   try {
-    const student = await Student.findById(req.params.id, { passwordHash: 0 });
+    const student = await Student.findById(req.params.id, { passwordHash: 0 }).lean();
     if (!student) return res.status(404).json({ message: 'Student not found' });
     res.json(student);
   } catch (err) {
@@ -94,13 +93,13 @@ router.get('/:id', async (req, res) => {
 // Default login password = roll no (lowercase), hashed and stored immediately
 router.post('/', async (req, res) => {
   try {
-    const { name, rollNo, roomNo, department, level, category } = req.body || {};
+    const { name, rollNo, roomNo, department, phone, level, semester, category } = req.body || {};
 
     // Hash roll no (lowercase) as the default password
     const passwordHash = await bcrypt.hash(rollNo.trim().toLowerCase(), 10);
 
     const student = await Student.create({
-      name, rollNo, roomNo: roomNo || null, department, level, category, passwordHash,
+      name, rollNo, roomNo: roomNo || null, department, phone: phone || null, level, semester, category, passwordHash,
     });
 
     const { passwordHash: _, ...safe } = student.toObject();
@@ -121,7 +120,7 @@ router.put('/:id', adminOnly, async (req, res) => {
       new: true,
       runValidators: true,
       projection: { passwordHash: 0 },
-    });
+    }).lean();
     if (!student) return res.status(404).json({ message: 'Student not found' });
     res.json(student);
   } catch (err) {
@@ -150,6 +149,22 @@ router.delete('/:id', adminOnly, async (req, res) => {
       if (!student) return res.status(404).json({ message: 'Student not found' });
       res.json({ message: 'Student deactivated (marked as Passed Out)' });
     }
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ── PATCH /api/students/:id/reactivate ───────────────────
+// Admin only — roll back a "Passed Out" student to active
+router.patch('/:id/reactivate', adminOnly, async (req, res) => {
+  try {
+    const student = await Student.findByIdAndUpdate(
+      req.params.id,
+      { active: true },
+      { new: true, projection: { passwordHash: 0 } }
+    ).lean();
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+    res.json({ message: 'Student reactivated successfully', student });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

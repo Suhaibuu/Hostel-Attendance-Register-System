@@ -160,23 +160,7 @@ export default function StudentHistoryModal({ student, onClose }) {
                     </div>
                   </div>
 
-                  {/* Attendance percentage indicator bar */}
-                  {monthData.totalDays > 0 && (() => {
-                    const pct = Math.round((monthData.presentDays / monthData.totalDays) * 100);
-                    const color = pct >= 75 ? 'bg-emerald-500' : pct >= 50 ? 'bg-amber-400' : 'bg-red-500';
-                    const textColor = pct >= 75 ? 'text-emerald-600' : pct >= 50 ? 'text-amber-600' : 'text-red-600';
-                    return (
-                      <div>
-                        <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider mb-1.5 ml-0.5">
-                          <span className="text-slate-400">Ratio Metric</span>
-                          <span className={`${textColor}`}>{pct}% Match</span>
-                        </div>
-                        <div className="h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200/10">
-                          <div className={`h-full rounded-full ${color} transition-all duration-500`} style={{ width: `${pct}%` }} />
-                        </div>
-                      </div>
-                    );
-                  })()}
+
 
                   {/* Days grid sheet */}
                   <div>

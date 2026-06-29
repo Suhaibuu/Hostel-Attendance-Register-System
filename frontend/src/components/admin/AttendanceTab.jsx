@@ -2,8 +2,7 @@ import { useState, useRef } from 'react';
 import { getReport } from '../../api/attendance';
 import Card from '../ui/Card';
 import Spinner from '../ui/Spinner';
-import { Calendar, Search, ArrowDownWideNarrow, Percent, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Calendar, Search, ArrowDownWideNarrow, Users, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const avatarColors = ['bg-indigo-500', 'bg-emerald-500', 'bg-violet-500', 'bg-amber-500', 'bg-pink-500'];
 const getColor = (n) => avatarColors[(n || 'A').charCodeAt(0) % avatarColors.length];
@@ -17,11 +16,12 @@ const MONTHS = ['January','February','March','April','May','June','July','August
 
 // Category badge colours
 const catStyle = {
-  General: 'bg-slate-100 text-slate-600 border-slate-200',
-  OBC:     'bg-blue-50  text-blue-700  border-blue-200',
-  SC:      'bg-violet-50 text-violet-700 border-violet-200',
-  ST:      'bg-emerald-50 text-emerald-700 border-emerald-200',
-  OEC:     'bg-amber-50  text-amber-700  border-amber-200',
+  General:    'bg-slate-100 text-slate-600 border-slate-200',
+  OBC:        'bg-blue-50  text-blue-700  border-blue-200',
+  SC:         'bg-violet-50 text-violet-700 border-violet-200',
+  ST:         'bg-emerald-50 text-emerald-700 border-emerald-200',
+  OEC:        'bg-amber-50  text-amber-700  border-amber-200',
+  Fisheries:  'bg-cyan-50   text-cyan-700   border-cyan-200',
 };
 
 function MonthPicker({ value, onChange }) {
@@ -47,14 +47,11 @@ function MonthPicker({ value, onChange }) {
         {MONTHS[selMonthIdx - 1]} {selYear}
       </button>
 
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: -6, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.97 }}
-            transition={{ duration: 0.15 }}
-            className="absolute z-50 mt-2 bg-white border border-slate-200 rounded-3xl shadow-2xl p-4 w-64"
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div
+            className="absolute z-50 mt-2 bg-white border border-slate-200 rounded-3xl shadow-2xl p-4 w-64 animate-fade-in"
           >
             {/* Year navigation */}
             <div className="flex items-center justify-between mb-3">
@@ -85,9 +82,9 @@ function MonthPicker({ value, onChange }) {
                 );
               })}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -124,8 +121,7 @@ export default function AttendanceTab() {
     return String(av).localeCompare(String(bv)) * sortDir;
   });
 
-  const totalPresent = data.reduce((s, r) => s + r.presentDays, 0);
-  const totalMessCuts = data.reduce((s, r) => s + (r.messCut || 0), 0);
+
 
   const SortHeader = ({ k, children, className = '' }) => (
     <th className={`py-4 cursor-pointer select-none hover:text-slate-800 transition-colors uppercase tracking-wider text-[10px] font-bold ${className}`}
@@ -170,28 +166,20 @@ export default function AttendanceTab() {
 
       {data.length > 0 && (
         <>
-          {/* Statistical Highlights Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {[
-              { label: 'Enrolled Residents', val: data.length, suffix: 'profiles', color: 'bg-indigo-50 text-indigo-700 border-indigo-100' },
-              { label: 'Check-In Dockets', val: totalPresent.toLocaleString(), suffix: 'records', color: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
-              { label: 'Total Mess Cuts', val: totalMessCuts, suffix: 'deductions', color: 'bg-red-50 text-red-700 border-red-100' },
-            ].map((stat) => (
-              <motion.div
-                key={stat.label}
-                whileHover={{ y: -2 }}
-                className={`p-5 rounded-3xl border shadow-premium bg-white flex items-center justify-between relative overflow-hidden`}
-              >
-                <div>
-                  <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest">{stat.label}</p>
-                  <h4 className="text-3xl font-black text-slate-800 mt-1.5 font-sans leading-none">{stat.val}</h4>
-                  <p className="text-[10px] text-slate-400 font-semibold mt-1">{stat.suffix}</p>
-                </div>
-                <div className={`p-3 rounded-2xl ${stat.color} border`}>
-                  <Percent className="w-5 h-5" />
-                </div>
-              </motion.div>
-            ))}
+          {/* Statistical Highlight */}
+          <div className="max-w-xs">
+            <div
+              className="p-5 rounded-3xl border shadow-premium bg-white flex items-center justify-between relative overflow-hidden hover:-translate-y-0.5 transition-smooth"
+            >
+              <div>
+                <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest">Enrolled Residents</p>
+                <h4 className="text-3xl font-black text-slate-800 mt-1.5 font-sans leading-none">{data.length}</h4>
+                <p className="text-[10px] text-slate-400 font-semibold mt-1">profiles</p>
+              </div>
+              <div className="p-3 rounded-2xl bg-indigo-50 text-indigo-700 border-indigo-100 border">
+                <Users className="w-5 h-5" />
+              </div>
+            </div>
           </div>
 
           {/* Dataset View table */}
@@ -213,11 +201,8 @@ export default function AttendanceTab() {
                   {sorted.map((r, idx) => {
                     const mc = r.messCut ?? 0;
                     return (
-                      <motion.tr
+                      <tr
                         key={r.studentId}
-                        initial={{ opacity: 0, y: 4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: Math.min(idx * 0.02, 0.25) }}
                         className="border-b border-slate-100 hover:bg-slate-50/50 transition-smooth group"
                       >
                         <td className="py-4 pl-4 font-extrabold text-slate-800 text-xs">{r.roomNo}</td>
@@ -248,7 +233,7 @@ export default function AttendanceTab() {
                             {mc === 0 ? '—' : `-${mc}`}
                           </span>
                         </td>
-                      </motion.tr>
+                      </tr>
                     );
                   })}
                 </tbody>

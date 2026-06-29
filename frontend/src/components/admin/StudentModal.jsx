@@ -11,8 +11,10 @@ export default function StudentModal({ student, onSave, onClose }) {
     name: student?.name || '',
     rollNo: student?.rollNo || '',
     roomNo: student?.roomNo || '',
+    phone: student?.phone || '',
     department: student?.department || 'Computer Science (CSE)',
     level: student?.level || 'UG',
+    semester: student?.semester || 'S1',
     category: student?.category || 'General',
   });
   const [errors, setErrors] = useState({});
@@ -24,6 +26,7 @@ export default function StudentModal({ student, onSave, onClose }) {
     const e = {};
     if (!form.name.trim()) e.name = 'Name is required';
     if (!form.rollNo.trim()) e.rollNo = 'Roll No is required';
+    if (form.phone && !/^\d{10}$/.test(form.phone)) e.phone = 'Must be a 10-digit number';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -91,7 +94,7 @@ export default function StudentModal({ student, onSave, onClose }) {
             {errors.rollNo && <p className="text-xs text-red-500 mt-1">{errors.rollNo}</p>}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Room No</label>
               <input 
@@ -103,12 +106,36 @@ export default function StudentModal({ student, onSave, onClose }) {
               />
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Program Level</label>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Level</label>
               <select value={form.level} onChange={(e) => set('level', e.target.value)} className={inputCls}>
-                <option value="UG">UG (B.Tech)</option>
-                <option value="PG">PG (M.Tech)</option>
+                <option value="UG">UG</option>
+                <option value="PG">PG</option>
               </select>
             </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Semester</label>
+              <select value={form.semester} onChange={(e) => set('semester', e.target.value)} className={inputCls}>
+                <option value="S1">S1</option>
+                <option value="S3">S3</option>
+                <option value="S7">S7</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Phone Number</label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400 pointer-events-none">+91</span>
+              <input 
+                type="tel" 
+                value={form.phone} 
+                onChange={(e) => set('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
+                placeholder="9876543210"
+                maxLength={10}
+                className={`${inputCls} pl-12`}
+              />
+            </div>
+            {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
           </div>
 
           <div>
@@ -129,6 +156,7 @@ export default function StudentModal({ student, onSave, onClose }) {
               <option value="SC">SC</option>
               <option value="ST">ST</option>
               <option value="OEC">OEC</option>
+              <option value="Fisheries">Fisheries</option>
             </select>
           </div>
 

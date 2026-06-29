@@ -28,19 +28,34 @@ router.post('/mark', async (req, res) => {
       return res.status(400).json({ message: 'date and records are required' });
     }
 
-    const ops = records.map((r) =>
-      Attendance.findOneAndUpdate(
-        { studentId: r.studentId, date },
-        {
-          present: r.present,
-          markedBy: req.user.id,
-          markedAt: new Date(),
-        },
-        { upsert: true, new: true }
-      )
-    );
+    const ops = [];
+    records.forEach((r) => {
+      if (r.present === null || r.present === undefined) {
+        ops.push({
+          deleteOne: {
+            filter: { studentId: r.studentId, date }
+          }
+        });
+      } else {
+        ops.push({
+          updateOne: {
+            filter: { studentId: r.studentId, date },
+            update: {
+              $set: {
+                present: r.present,
+                markedBy: req.user.id,
+                markedAt: new Date(),
+              },
+            },
+            upsert: true,
+          }
+        });
+      }
+    });
 
-    await Promise.all(ops);
+    if (ops.length > 0) {
+      await Attendance.bulkWrite(ops, { ordered: false });
+    }
     res.json({ message: 'Attendance saved', count: records.length });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -59,12 +74,19 @@ const getRoomAttendanceByDate = async (req, res) => {
       return res.status(400).json({ message: 'Invalid date format. Use YYYY-MM-DD' });
     }
 
-    // Active students in the room
-    const students = await Student.find({ roomNo, active: true }).sort({ name: 1 });
+    // Active students in the room — lean() returns plain JS objects (5-10x faster)
+    // Only select the fields we actually need
+    const students = await Student.find(
+      { roomNo, active: true },
+      { name: 1, rollNo: 1 }
+    ).sort({ name: 1 }).lean();
 
     // Records for those students on the given date
     const studentIds = students.map((s) => s._id);
-    const records = await Attendance.find({ studentId: { $in: studentIds }, date });
+    const records = await Attendance.find(
+      { studentId: { $in: studentIds }, date },
+      { studentId: 1, present: 1 }
+    ).lean();
 
     // Build lookup map studentId → present
     const recordMap = {};
@@ -97,14 +119,21 @@ router.get('/student/:studentId', async (req, res) => {
     const month = req.query.month || todayStr().slice(0, 7); // YYYY-MM
     const total = daysInMonth(month);
 
-    // All records whose date starts with the month prefix
-    const records = await Attendance.find({
-      studentId: req.params.studentId,
-      date: { $gte: `${month}-01`, $lte: `${month}-31` },
-    }).sort({ date: 1 });
+    // Only select fields we need, use lean() for speed
+    const records = await Attendance.find(
+      {
+        studentId: req.params.studentId,
+        date: { $gte: `${month}-01`, $lte: `${month}-31` },
+      },
+      { date: 1, present: 1, _id: 0 }
+    ).sort({ date: 1 }).lean();
 
-    const presentDays = records.filter((r) => r.present).length;
-    const absentDays = records.filter((r) => !r.present).length;
+    let presentDays = 0;
+    let absentDays = 0;
+    for (let i = 0; i < records.length; i++) {
+      if (records[i].present) presentDays++;
+      else absentDays++;
+    }
 
     res.json({
       month,
@@ -122,8 +151,10 @@ router.get('/student/:studentId', async (req, res) => {
 // Returns sorted list of all months (YYYY-MM) that have attendance records
 router.get('/student/:studentId/months', async (req, res) => {
   try {
-    const records = await Attendance.find({ studentId: req.params.studentId }, 'date');
-    const monthSet = new Set(records.map((r) => r.date.slice(0, 7)));
+    // Use distinct + aggregation to avoid fetching all documents
+    // distinct('date') returns unique date strings; we then extract months
+    const dates = await Attendance.distinct('date', { studentId: req.params.studentId });
+    const monthSet = new Set(dates.map((d) => d.slice(0, 7)));
     const months = [...monthSet].sort().reverse(); // newest first
     res.json({ months });
   } catch (err) {
@@ -135,20 +166,25 @@ router.get('/student/:studentId/months', async (req, res) => {
 // Admin only — monthly mess bill report
 router.get('/report', async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Admin access required' });
+    if (req.user.role !== 'admin' && req.user.role !== 'warden') {
+      return res.status(403).json({ message: 'Admin or Warden access required' });
     }
 
     const month = req.query.month || todayStr().slice(0, 7);
     const totalDays = daysInMonth(month);
 
-    // All active students
-    const students = await Student.find({ active: true }).sort({ roomNo: 1, name: 1 });
+    // Run both queries in parallel — each with lean() and minimal projection
+    const [students, allRecords] = await Promise.all([
+      Student.find(
+        { active: true },
+        { name: 1, rollNo: 1, roomNo: 1, department: 1, category: 1 }
+      ).sort({ roomNo: 1, name: 1 }).lean(),
 
-    // All attendance records for the month
-    const allRecords = await Attendance.find({
-      date: { $gte: `${month}-01`, $lte: `${month}-31` },
-    });
+      Attendance.find(
+        { date: { $gte: `${month}-01`, $lte: `${month}-31` } },
+        { studentId: 1, present: 1, _id: 0 }
+      ).lean(),
+    ]);
 
     // Build lookup: studentId → { presentDays: number, absentDays: number }
     const statsMap = {};
@@ -202,8 +238,19 @@ router.get('/report', async (req, res) => {
 router.get('/stats/today', async (req, res) => {
   try {
     const date = todayStr();
-    const students = await Student.find({ active: true });
-    const records = await Attendance.find({ date });
+
+    // Run both queries in parallel with lean() and minimal projection
+    const [students, records] = await Promise.all([
+      Student.find(
+        { active: true },
+        { roomNo: 1, _id: 1 }
+      ).lean(),
+
+      Attendance.find(
+        { date },
+        { studentId: 1, present: 1, _id: 0 }
+      ).lean(),
+    ]);
 
     const recordMap = {};
     records.forEach((r) => {

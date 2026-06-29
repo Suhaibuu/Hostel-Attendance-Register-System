@@ -73,7 +73,20 @@ const MONGO_URI =
   'mongodb://localhost:27017/hosteltrack';
 
 mongoose
-  .connect(MONGO_URI)
+  .connect(MONGO_URI, {
+    // Connection pool: allow up to 10 concurrent operations (default is 5)
+    maxPoolSize: 10,
+    // Reduce time spent establishing new connections
+    minPoolSize: 2,
+    // Timeout waiting for a connection from the pool (ms)
+    waitQueueTimeoutMS: 5000,
+    // Server selection timeout — how long to try finding a suitable server
+    serverSelectionTimeoutMS: 5000,
+    // Socket timeout — how long to wait for a response (ms)
+    socketTimeoutMS: 30000,
+    // Heartbeat frequency for monitoring (ms)
+    heartbeatFrequencyMS: 10000,
+  })
   .then(() => {
     console.log('✅ MongoDB connected');
 

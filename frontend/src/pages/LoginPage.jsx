@@ -53,7 +53,13 @@ export default function LoginPage() {
         else navigate('/warden');
       }
     } catch (err) {
-      setError(err.message || 'Login failed. Please check your credentials.');
+      const msg = err.message || 'Login failed. Please check your credentials.';
+      // If it's a connectivity/timeout error, give a friendlier message
+      if (msg.includes('too long') || msg.includes('Unable to reach') || msg.includes('timeout') || msg.includes('Network Error')) {
+        setError('Server is starting up — this takes about 30 seconds on first visit. Please try again.');
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }

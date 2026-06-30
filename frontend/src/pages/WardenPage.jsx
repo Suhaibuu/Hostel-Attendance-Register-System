@@ -120,10 +120,10 @@ function AddStudentModal({ onSave, onClose }) {
   const inp = 'w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-100 transition-all font-semibold text-slate-800';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
       <div
-        className="relative w-full max-w-[420px] bg-white rounded-3xl shadow-2xl p-6 border border-slate-100"
+        className="relative w-full max-w-[420px] max-h-[calc(100vh-2rem)] overflow-y-auto bg-white rounded-3xl shadow-2xl p-6 border border-slate-100"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center gap-2 mb-4">
@@ -209,7 +209,7 @@ function AddStudentModal({ onSave, onClose }) {
 }
 
 // ─── Student Card (memoized for perf — no framer-motion layout) ─────────────────
-const StudentCard = memo(function StudentCard({ s, status, onToggle, onHistory, selectedRoom }) {
+const StudentCard = memo(function StudentCard({ s, status, messCut, onToggle, onToggleMessCut, onHistory, selectedRoom }) {
   return (
     <div
       className={`flex items-center gap-4 p-4 rounded-2xl border transition-all hover:-translate-y-px ${
@@ -230,21 +230,52 @@ const StudentCard = memo(function StudentCard({ s, status, onToggle, onHistory, 
           <span className="truncate">{s.name}</span>
           <History className="w-3 h-3 text-slate-400 shrink-0" />
         </button>
-        <p className="text-[11px] text-slate-400 font-semibold tracking-wide uppercase">{s.rollNo}</p>
+        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+          <span className="text-[11px] text-slate-400 font-semibold tracking-wide uppercase">{s.rollNo}</span>
+          <span className="h-1 w-1 bg-slate-300 rounded-full" />
+          <span className="text-[10px] text-indigo-600 font-bold bg-indigo-50 px-1.5 py-0.5 rounded uppercase">{s.semester || 'S1'}</span>
+          {s.phone && (
+            <>
+              <span className="h-1 w-1 bg-slate-300 rounded-full" />
+              <span className="text-[10px] text-slate-500 font-medium">📞 +91 {s.phone}</span>
+            </>
+          )}
+        </div>
       </div>
-      <div className="flex items-center gap-1.5 shrink-0">
-        <button
-          onClick={() => onToggle(s.studentId, true)}
-          className={`p-2.5 rounded-xl border transition-all cursor-pointer ${status === true ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-50'}`}
-        >
-          <CheckCircle2 className="w-4 h-4" />
-        </button>
-        <button
-          onClick={() => onToggle(s.studentId, false)}
-          className={`p-2.5 rounded-xl border transition-all cursor-pointer ${status === false ? 'bg-red-500 text-white border-red-500' : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-50'}`}
-        >
-          <XCircle className="w-4 h-4" />
-        </button>
+      <div className="flex flex-col items-end gap-1.5 shrink-0">
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => onToggle(s.studentId, true)}
+            className={`p-2.5 rounded-xl border transition-all cursor-pointer ${status === true ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-50'}`}
+          >
+            <CheckCircle2 className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => onToggle(s.studentId, false)}
+            className={`p-2.5 rounded-xl border transition-all cursor-pointer ${status === false ? 'bg-red-500 text-white border-red-500' : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-50'}`}
+          >
+            <XCircle className="w-4 h-4" />
+          </button>
+        </div>
+        {/* Mess Cut checkbox — only visible when attendance is marked */}
+        {status !== null && status !== undefined && (
+          <label
+            className={`flex items-center gap-2 cursor-pointer select-none transition-all ${
+              messCut ? 'opacity-100' : 'opacity-60 hover:opacity-80'
+            }`}
+            title={messCut ? 'Mess cut enabled — this day counts toward mess deduction' : 'Mess cut disabled — meal counted for this day'}
+          >
+            <input
+              type="checkbox"
+              checked={!!messCut}
+              onChange={() => onToggleMessCut(s.studentId)}
+              className="w-5 h-5 rounded accent-amber-500 cursor-pointer"
+            />
+            <span className={`text-[11px] font-bold uppercase tracking-wider ${
+              messCut ? 'text-amber-600' : 'text-slate-400'
+            }`}>Mess Cut</span>
+          </label>
+        )}
       </div>
     </div>
   );
@@ -286,6 +317,7 @@ export default function WardenPage() {
 
   const [students, setStudents]             = useState([]);
   const [marks, setMarks]                   = useState({});
+  const [messCutMarks, setMessCutMarks]     = useState({});
   const [studentsLoading, setStudentsLoading] = useState(false);
   const [submitting, setSubmitting]         = useState(false);
   const [toast, setToast]                   = useState(null);
@@ -311,11 +343,16 @@ export default function WardenPage() {
       const data = await getRoomAttendance(roomNo, date);
       const sts = data.students || [];
       setStudents(sts);
-      const initial = {};
-      sts.forEach(s => { initial[s.studentId] = s.present; });
-      setMarks(initial);
+      const initialMarks = {};
+      const initialMessCut = {};
+      sts.forEach(s => {
+        initialMarks[s.studentId] = s.present;
+        initialMessCut[s.studentId] = s.messCut ?? (s.present === false);
+      });
+      setMarks(initialMarks);
+      setMessCutMarks(initialMessCut);
     } catch {
-      setStudents([]); setMarks({});
+      setStudents([]); setMarks({}); setMessCutMarks({});
     } finally {
       setStudentsLoading(false);
     }
@@ -328,13 +365,29 @@ export default function WardenPage() {
   }, [selectedDate]);
 
   const toggleMark = useCallback((studentId, value) => {
-    setMarks(prev => ({ ...prev, [studentId]: prev[studentId] === value ? null : value }));
+    setMarks(prev => {
+      const newVal = prev[studentId] === value ? null : value;
+      setMessCutMarks(prevMc => ({
+        ...prevMc,
+        [studentId]: newVal === false
+      }));
+      return { ...prev, [studentId]: newVal };
+    });
+  }, []);
+
+  const toggleMessCut = useCallback((studentId) => {
+    setMessCutMarks(prev => ({ ...prev, [studentId]: !prev[studentId] }));
   }, []);
 
   const markAllPresent = useCallback(() => {
-    const updated = {};
-    students.forEach(s => { updated[s.studentId] = true; });
-    setMarks(updated);
+    const updatedMarks = {};
+    const updatedMessCut = {};
+    students.forEach(s => {
+      updatedMarks[s.studentId] = true;
+      updatedMessCut[s.studentId] = false; // present → no mess cut by default
+    });
+    setMarks(updatedMarks);
+    setMessCutMarks(updatedMessCut);
   }, [students]);
 
   const markedCount = useMemo(
@@ -347,7 +400,7 @@ export default function WardenPage() {
     setSubmitting(true);
     try {
       const records = Object.entries(marks)
-        .map(([studentId, present]) => ({ studentId, present }));
+        .map(([studentId, present]) => ({ studentId, present, messCut: !!messCutMarks[studentId] }));
       await markAttendance({ roomNo: selectedRoom, date: selectedDate, records });
       setToast({ message: `✓ Attendance saved for Room ${selectedRoom} · ${formatDisplayDate(selectedDate)}`, type: 'success' });
       if (isToday) await fetchStats();
@@ -430,7 +483,7 @@ export default function WardenPage() {
         </div>
 
         {/* Tab Contents */}
-        <div key={activeTab} className="animate-fade-in space-y-6">
+        <div key={activeTab} className="animate-fade-only space-y-6">
           {activeTab === 'mark' && (
             <>
               {/* Stats (today only) */}
@@ -540,7 +593,9 @@ export default function WardenPage() {
                             key={s.studentId}
                             s={s}
                             status={marks[s.studentId]}
+                            messCut={messCutMarks[s.studentId]}
                             onToggle={toggleMark}
+                            onToggleMessCut={toggleMessCut}
                             onHistory={setHistoryStudent}
                             selectedRoom={selectedRoom}
                           />

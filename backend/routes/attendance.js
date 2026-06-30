@@ -43,6 +43,7 @@ router.post('/mark', async (req, res) => {
             update: {
               $set: {
                 present: r.present,
+                messCut: r.messCut ?? (r.present === false),
                 markedBy: req.user.id,
                 markedAt: new Date(),
               },
@@ -78,29 +79,35 @@ const getRoomAttendanceByDate = async (req, res) => {
     // Only select the fields we actually need
     const students = await Student.find(
       { roomNo, active: true },
-      { name: 1, rollNo: 1 }
+      { name: 1, rollNo: 1, phone: 1, semester: 1 }
     ).sort({ name: 1 }).lean();
 
     // Records for those students on the given date
     const studentIds = students.map((s) => s._id);
     const records = await Attendance.find(
       { studentId: { $in: studentIds }, date },
-      { studentId: 1, present: 1 }
+      { studentId: 1, present: 1, messCut: 1 }
     ).lean();
 
-    // Build lookup map studentId → present
+    // Build lookup map studentId → record
     const recordMap = {};
     records.forEach((r) => {
-      recordMap[r.studentId.toString()] = r.present;
+      recordMap[r.studentId.toString()] = { present: r.present, messCut: r.messCut };
     });
 
     // Merge
-    const merged = students.map((s) => ({
-      studentId: s._id,
-      name: s.name,
-      rollNo: s.rollNo,
-      present: recordMap[s._id.toString()] ?? null,
-    }));
+    const merged = students.map((s) => {
+      const rec = recordMap[s._id.toString()];
+      return {
+        studentId: s._id,
+        name: s.name,
+        rollNo: s.rollNo,
+        phone: s.phone,
+        semester: s.semester,
+        present: rec ? rec.present : null,
+        messCut: rec ? (rec.messCut ?? (rec.present === false)) : null,
+      };
+    });
 
     res.json({ date, roomNo, students: merged });
   } catch (err) {
@@ -125,14 +132,16 @@ router.get('/student/:studentId', async (req, res) => {
         studentId: req.params.studentId,
         date: { $gte: `${month}-01`, $lte: `${month}-31` },
       },
-      { date: 1, present: 1, _id: 0 }
+      { date: 1, present: 1, messCut: 1, _id: 0 }
     ).sort({ date: 1 }).lean();
 
     let presentDays = 0;
     let absentDays = 0;
+    let messCutDays = 0;
     for (let i = 0; i < records.length; i++) {
       if (records[i].present) presentDays++;
       else absentDays++;
+      if (records[i].messCut) messCutDays++;
     }
 
     res.json({
@@ -140,6 +149,7 @@ router.get('/student/:studentId', async (req, res) => {
       totalDays: total,
       presentDays,
       absentDays,
+      messCutDays,
       records,
     });
   } catch (err) {
@@ -177,41 +187,45 @@ router.get('/report', async (req, res) => {
     const [students, allRecords] = await Promise.all([
       Student.find(
         { active: true },
-        { name: 1, rollNo: 1, roomNo: 1, department: 1, category: 1 }
+        { name: 1, rollNo: 1, roomNo: 1, department: 1, category: 1, semester: 1 }
       ).sort({ roomNo: 1, name: 1 }).lean(),
-
+      
       Attendance.find(
         { date: { $gte: `${month}-01`, $lte: `${month}-31` } },
-        { studentId: 1, present: 1, _id: 0 }
+        { studentId: 1, present: 1, messCut: 1, _id: 0 }
       ).lean(),
     ]);
 
-    // Build lookup: studentId → { presentDays: number, absentDays: number }
+    // Build lookup: studentId → { presentDays, absentDays, messCutDays }
     const statsMap = {};
     allRecords.forEach((r) => {
       const key = r.studentId.toString();
       if (!statsMap[key]) {
-        statsMap[key] = { presentDays: 0, absentDays: 0 };
+        statsMap[key] = { presentDays: 0, absentDays: 0, messCutDays: 0 };
       }
       if (r.present) {
         statsMap[key].presentDays++;
       } else {
         statsMap[key].absentDays++;
       }
+      if (r.messCut) {
+        statsMap[key].messCutDays++;
+      }
     });
 
     const report = students.map((s) => {
-      const stats = statsMap[s._id.toString()] || { presentDays: 0, absentDays: 0 };
+      const stats = statsMap[s._id.toString()] || { presentDays: 0, absentDays: 0, messCutDays: 0 };
       const presentDays = stats.presentDays;
       const absentDays = stats.absentDays;
+      const messCutDays = stats.messCutDays;
       const studentTotalDays = presentDays + absentDays;
 
-      // Mess cut calculation:
-      // General/OBC: 2 absent days = 1 mess cut (floor division)
-      // SC/ST/OEC: 3 absent days = 1 mess cut (floor division)
+      // Mess cut calculation uses messCutDays (days explicitly flagged for mess cut):
+      // General/OBC: 2 mess-cut-eligible days = 1 mess cut (floor division)
+      // SC/ST/OEC: 3 mess-cut-eligible days = 1 mess cut (floor division)
       const category = s.category || 'General';
-      const divisor = (category === 'SC' || category === 'ST' || category === 'OEC') ? 3 : 2;
-      const messCut = Math.floor(absentDays / divisor);
+      const divisor = (category === 'SC' || category === 'ST' || category === 'OEC' || category === 'Fisheries') ? 3 : 2;
+      const messCut = Math.floor(messCutDays / divisor);
 
       return {
         studentId: s._id,
@@ -219,9 +233,11 @@ router.get('/report', async (req, res) => {
         rollNo: s.rollNo,
         roomNo: s.roomNo,
         department: s.department,
+        semester: s.semester || 'S1',
         category,
         presentDays,
         absentDays,
+        messCutDays,
         totalDays: studentTotalDays,
         messCut,
       };

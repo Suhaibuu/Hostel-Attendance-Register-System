@@ -26,7 +26,8 @@ export default function StudentModal({ student, onSave, onClose }) {
     const e = {};
     if (!form.name.trim()) e.name = 'Name is required';
     if (!form.rollNo.trim()) e.rollNo = 'Roll No is required';
-    if (form.phone && !/^\d{10}$/.test(form.phone)) e.phone = 'Must be a 10-digit number';
+    if (!form.phone.trim()) e.phone = 'Phone number is required';
+    else if (!/^\d{10}$/.test(form.phone)) e.phone = 'Must be a 10-digit number';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -117,6 +118,7 @@ export default function StudentModal({ student, onSave, onClose }) {
               <select value={form.semester} onChange={(e) => set('semester', e.target.value)} className={inputCls}>
                 <option value="S1">S1</option>
                 <option value="S3">S3</option>
+                <option value="S5">S5</option>
                 <option value="S7">S7</option>
               </select>
             </div>
@@ -132,6 +134,7 @@ export default function StudentModal({ student, onSave, onClose }) {
                 onChange={(e) => set('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
                 placeholder="9876543210"
                 maxLength={10}
+                required
                 className={`${inputCls} pl-12`}
               />
             </div>

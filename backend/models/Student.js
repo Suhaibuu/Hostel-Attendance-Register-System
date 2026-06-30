@@ -24,10 +24,10 @@ const studentSchema = new mongoose.Schema({
   },
   phone: {
     type: String,
+    required: true,
     trim: true,
-    default: null,
     validate: {
-      validator: (v) => !v || /^\d{10}$/.test(v),
+      validator: (v) => /^\d{10}$/.test(v),
       message: 'Phone must be a 10-digit number',
     },
   },
@@ -38,7 +38,7 @@ const studentSchema = new mongoose.Schema({
   },
   semester: {
     type: String,
-    enum: ['S1', 'S3', 'S7'],
+    enum: ['S1', 'S3', 'S5', 'S7'],
     default: 'S1',
   },
   category: {

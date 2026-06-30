@@ -148,6 +148,7 @@ export default function StudentModal({ student, onSave, onClose }) {
               <option value="Electronics and Communication(ECE)">Electronics and Communication(ECE)</option>
               <option value="Mechanical(ME)">Mechanical (ME)</option>
               <option value="Electrical and Electronics(EEE)">Electrical and Electronics(EEE)</option>
+              <option value="Civil(CE)">Civil (CE)</option>
             </select>
           </div>
 

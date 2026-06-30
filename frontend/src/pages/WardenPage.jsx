@@ -186,6 +186,7 @@ function AddStudentModal({ onSave, onClose }) {
               <option value="Electronics and Communication(ECE)">Electronics (ECE)</option>
               <option value="Mechanical(ME)">Mechanical (ME)</option>
               <option value="Electrical and Electronics(EEE)">Electrical (EEE)</option>
+              <option value="Civil(CE)">Civil (CE)</option>
             </select>
           </div>
           <div>

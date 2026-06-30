@@ -20,6 +20,22 @@ const initials = (n) => {
   return p.length === 1 ? p[0].slice(0, 2).toUpperCase() : (p[0][0] + p[p.length - 1][0]).toUpperCase();
 };
 
+const getDeptShortcut = (dept) => {
+  if (!dept) return '—';
+  const d = dept.toLowerCase().trim();
+  if (d.includes('computer') || d === 'cse' || d.includes('computational')) return 'CSE';
+  if (d.includes('electronics and communication') || d === 'ece') return 'ECE';
+  if (d.includes('electrical and electronics') || d === 'eee') return 'EEE';
+  if (d.includes('civil') || d === 'ce') return 'CE';
+  if (d.includes('mechanical') || d === 'me') return 'ME';
+  
+  // Try extracting parenthesis content e.g. (ECE), (EEE), (CE), etc.
+  const match = dept.match(/\(([^)]+)\)/);
+  if (match) return match[1].toUpperCase();
+
+  return dept.length > 5 ? dept.split(/\s+/).map(w => w[0]).join('').toUpperCase() : dept.toUpperCase();
+};
+
 function StudentRow({ s, idx, onEdit, onDeactivate, onReactivate, onHistory, onAssignRoom, onDelete }) {
   const isEven = idx % 2 === 0;
 
@@ -40,7 +56,11 @@ function StudentRow({ s, idx, onEdit, onDeactivate, onReactivate, onHistory, onA
             >
               {s.name}
             </button>
-            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">{s.rollNo}</span>
+            <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-400 font-bold uppercase tracking-wider flex-wrap">
+              <span>{s.rollNo}</span>
+              <span className="h-1 w-1 bg-slate-300 rounded-full shrink-0" />
+              <span className="text-indigo-600 bg-indigo-50 px-1 py-0.2 rounded uppercase shrink-0">{s.semester || 'S1'}</span>
+            </div>
           </div>
         </div>
       </td>
@@ -59,7 +79,12 @@ function StudentRow({ s, idx, onEdit, onDeactivate, onReactivate, onHistory, onA
           </button>
         )}
       </td>
-      <td className="py-4 text-xs font-bold text-slate-600 hidden md:table-cell">{s.department || '—'}</td>
+      <td className="py-4 text-xs font-medium text-slate-600">
+        {s.phone ? `+91 ${s.phone}` : '—'}
+      </td>
+      <td className="py-4 text-xs font-bold text-slate-600 hidden md:table-cell">
+        <span className="px-2 py-0.5 bg-slate-100/80 rounded border border-slate-200/10 uppercase">{getDeptShortcut(s.department)}</span>
+      </td>
       <td className="py-4 text-xs font-bold text-slate-600 hidden md:table-cell">
         <div className="flex flex-col gap-1 items-start">
           <span className="px-2 py-0.5 bg-slate-100/80 rounded border border-slate-200/10">{s.level || 'UG'}</span>
@@ -154,6 +179,7 @@ function StudentTable({ rows, loading, onEdit, onDeactivate, onReactivate, onHis
               <tr className="text-left text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 bg-slate-50/50">
                 <th className="py-4 pl-4">Resident</th>
                 <th className="py-4">Room No</th>
+                <th className="py-4">Phone</th>
                 <th className="py-4 hidden md:table-cell">Dept</th>
                 <th className="py-4 hidden md:table-cell">Level</th>
                 <th className="py-4 hidden sm:table-cell">Semester</th>
@@ -188,11 +214,14 @@ export default function StudentsTab() {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('All');
   const [subTab, setSubTab] = useState('active'); // 'active' | 'unallotted' | 'alumni'
   const [modal, setModal] = useState(null);         // null | 'add' | student obj
   const [historyStudent, setHistoryStudent] = useState(null);
   const [assignRoomModal, setAssignRoomModal] = useState(null);
+
+  const [filterSem, setFilterSem] = useState('all');
+  const [filterDept, setFilterDept] = useState('all');
+  const [filterCat, setFilterCat] = useState('all');
 
   const load = async () => {
     setLoading(true);
@@ -213,15 +242,21 @@ export default function StudentsTab() {
       const matchesSearch = !q || s.name.toLowerCase().includes(q) || s.rollNo.toLowerCase().includes(q) || (s.roomNo || '').toLowerCase().includes(q);
       if (!matchesSearch) continue;
 
-      const matchesCategory = categoryFilter === 'All' || (s.category || 'General') === categoryFilter;
-      if (!matchesCategory) continue;
+      const matchesSem = filterSem === 'all' || s.semester === filterSem;
+      const matchesDept = filterDept === 'all' || getDeptShortcut(s.department) === filterDept;
+      
+      const matchesCat = filterCat === 'all' || 
+        (filterCat === 'obc_general' && (s.category === 'OBC' || s.category === 'General' || !s.category)) ||
+        (s.category === filterCat);
+
+      if (!matchesSem || !matchesDept || !matchesCat) continue;
 
       if (!s.active) alumni.push(s);
       else if (s.roomNo) active.push(s);
       else unallotted.push(s);
     }
     return { activeStudents: active, unallottedStudents: unallotted, alumniStudents: alumni };
-  }, [students, q, categoryFilter]);
+  }, [students, q, filterSem, filterDept, filterCat]);
   const displayed          = subTab === 'active' ? activeStudents : subTab === 'unallotted' ? unallottedStudents : alumniStudents;
 
   const handleSave = async (form) => {
@@ -263,39 +298,76 @@ export default function StudentsTab() {
     <div className="space-y-6">
       
       {/* Top filter bar operations - Asymmetric layout */}
-      <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
+      <div className="flex flex-col xl:flex-row gap-4 items-center justify-between">
         
-        {/* Search & Filter tools */}
-        <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-          {/* Search tool panel */}
-          <div className="relative w-full sm:w-64 shrink-0">
+        {/* Search & Filter tools panel */}
+        <div className="flex flex-col sm:flex-row gap-3 flex-1 w-full max-w-4xl">
+          <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input 
               value={search} 
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search name, roll, room..."
+              placeholder="Search by name, roll, or room..."
               className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200/60 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary-100 focus:border-primary-500 transition-smooth" 
             />
           </div>
 
-          {/* Category Filter dropdown */}
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="bg-white border border-slate-200/60 rounded-2xl px-4 py-3 text-xs font-bold outline-none focus:ring-4 focus:ring-primary-100 focus:border-primary-500 transition-smooth text-slate-700 min-w-[130px] cursor-pointer"
-          >
-            <option value="All">All Categories</option>
-            <option value="General">General</option>
-            <option value="OBC">OBC</option>
-            <option value="SC">SC</option>
-            <option value="ST">ST</option>
-            <option value="OEC">OEC</option>
-            <option value="Fisheries">Fisheries</option>
-          </select>
+          <div className="flex flex-wrap gap-2 items-center">
+            {/* Semester Filter */}
+            <select
+              value={filterSem}
+              onChange={(e) => setFilterSem(e.target.value)}
+              className="px-3 py-3 bg-white border border-slate-200/60 rounded-2xl text-xs font-bold outline-none focus:border-primary-500 transition-smooth cursor-pointer text-slate-600"
+            >
+              <option value="all">All Semesters</option>
+              <option value="S1">S1</option>
+              <option value="S3">S3</option>
+              <option value="S5">S5</option>
+              <option value="S7">S7</option>
+            </select>
+
+            {/* Department Filter */}
+            <select
+              value={filterDept}
+              onChange={(e) => setFilterDept(e.target.value)}
+              className="px-3 py-3 bg-white border border-slate-200/60 rounded-2xl text-xs font-bold outline-none focus:border-primary-500 transition-smooth cursor-pointer text-slate-600"
+            >
+              <option value="all">All Depts</option>
+              <option value="CSE">CSE</option>
+              <option value="ECE">ECE</option>
+              <option value="EEE">EEE</option>
+              <option value="CE">CE</option>
+              <option value="ME">ME</option>
+            </select>
+
+            {/* Category Filter */}
+            <select
+              value={filterCat}
+              onChange={(e) => setFilterCat(e.target.value)}
+              className="px-3 py-3 bg-white border border-slate-200/60 rounded-2xl text-xs font-bold outline-none focus:border-primary-500 transition-smooth cursor-pointer text-slate-600"
+            >
+              <option value="all">All Categories</option>
+              <option value="obc_general">OBC / General</option>
+              <option value="SC">SC</option>
+              <option value="ST">ST</option>
+              <option value="OEC">OEC</option>
+              <option value="Fisheries">Fisheries</option>
+            </select>
+
+            {(filterSem !== 'all' || filterDept !== 'all' || filterCat !== 'all') && (
+              <button
+                onClick={() => { setFilterSem('all'); setFilterDept('all'); setFilterCat('all'); }}
+                className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-2xl text-xs font-bold transition-smooth cursor-pointer flex items-center justify-center"
+                title="Clear Filters"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Dynamic sliding sub-tabs */}
-        <div className="flex gap-1.5 p-1 bg-slate-100 rounded-xl flex-wrap w-full sm:w-auto justify-start sm:justify-end">
+        <div className="flex gap-1.5 p-1 bg-slate-100 rounded-xl flex-wrap w-full xl:w-auto justify-start xl:justify-end">
           {[
             { id: 'active', label: 'Allotted', count: activeStudents.length },
             { id: 'unallotted', label: 'Unallotted', count: unallottedStudents.length },

@@ -13,13 +13,14 @@ const buildCalendar = (yearMonth, records) => {
   const firstDow = new Date(y, m - 1, 1).getDay();
 
   const lookup = {};
-  records.forEach((r) => { lookup[r.date] = r.present; });
+  records.forEach((r) => { lookup[r.date] = { present: r.present, messCut: r.messCut }; });
 
   const cells = [];
   for (let i = 0; i < firstDow; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) {
     const iso = `${yearMonth}-${String(d).padStart(2, '0')}`;
-    cells.push({ day: d, iso, status: lookup[iso] ?? null });
+    const rec = lookup[iso];
+    cells.push({ day: d, iso, status: rec ? rec.present : null, messCut: rec ? rec.messCut : false });
   }
   return cells;
 };
@@ -145,7 +146,7 @@ export default function StudentHistoryModal({ student, onClose }) {
               ) : monthData && (
                 <div className="space-y-6">
                   {/* Summary bar */}
-                  <div className="grid grid-cols-3 gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-200/20">
+                  <div className="grid grid-cols-4 gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-200/20">
                     <div className="text-center py-1">
                       <p className="text-xs font-bold text-slate-800">{monthData.totalDays}</p>
                       <p className="text-[10px] text-slate-400 uppercase font-semibold mt-0.5">Total Days</p>
@@ -154,9 +155,13 @@ export default function StudentHistoryModal({ student, onClose }) {
                       <p className="text-xs font-bold text-emerald-600">{monthData.presentDays}</p>
                       <p className="text-[10px] text-slate-400 uppercase font-semibold mt-0.5">Present</p>
                     </div>
-                    <div className="text-center py-1">
+                    <div className="text-center py-1 border-r border-slate-200/60">
                       <p className="text-xs font-bold text-red-500">{monthData.absentDays}</p>
                       <p className="text-[10px] text-slate-400 uppercase font-semibold mt-0.5">Absent</p>
+                    </div>
+                    <div className="text-center py-1">
+                      <p className="text-xs font-bold text-amber-600">{monthData.messCutDays || 0}</p>
+                      <p className="text-[10px] text-slate-400 uppercase font-semibold mt-0.5">Mess Cut</p>
                     </div>
                   </div>
 
@@ -177,15 +182,19 @@ export default function StudentHistoryModal({ student, onClose }) {
                         ) : (
                           <div 
                             key={cell.iso}
-                            className={`aspect-square rounded-xl flex items-center justify-center text-xs font-bold transition-smooth ${
+                            className={`aspect-square rounded-xl flex flex-col items-center justify-center text-xs font-bold transition-smooth relative ${
                               cell.status === true
                                 ? 'bg-emerald-100/90 text-emerald-700 border border-emerald-200'
                                 : cell.status === false
                                   ? 'bg-red-100/90 text-red-600 border border-red-200'
                                   : 'bg-slate-100 text-slate-400 border border-slate-200/20'
                             }`}
+                            title={cell.messCut ? 'Mess cut enabled' : ''}
                           >
                             {cell.day}
+                            {cell.messCut && (
+                              <span className="absolute bottom-0.5 w-1.5 h-1.5 rounded-full bg-amber-500" />
+                            )}
                           </div>
                         )
                       )}

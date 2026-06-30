@@ -71,7 +71,7 @@ export default function AdminPage() {
         {/* Tab content panel wrapper with subtle motion reveal */}
         <div
           key={activeTab}
-          className="min-h-[60vh] animate-fade-in"
+          className="min-h-[60vh] animate-fade-only"
         >
           {activeTab === 'overview' && <ControlCenterTab />}
           {activeTab === 'students' && <StudentsTab />}

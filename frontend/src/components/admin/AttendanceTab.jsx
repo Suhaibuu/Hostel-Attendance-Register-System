@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { getReport } from '../../api/attendance';
 import Card from '../ui/Card';
 import Spinner from '../ui/Spinner';
-import { Calendar, Search, ArrowDownWideNarrow, Users, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Search, ArrowDownWideNarrow, Users, Sparkles, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 
 const avatarColors = ['bg-indigo-500', 'bg-emerald-500', 'bg-violet-500', 'bg-amber-500', 'bg-pink-500'];
 const getColor = (n) => avatarColors[(n || 'A').charCodeAt(0) % avatarColors.length];
@@ -89,6 +89,21 @@ function MonthPicker({ value, onChange }) {
   );
 }
 
+const getDeptShortcut = (dept) => {
+  if (!dept) return '—';
+  const d = dept.toLowerCase().trim();
+  if (d.includes('computer') || d === 'cse' || d.includes('computational')) return 'CSE';
+  if (d.includes('electronics and communication') || d === 'ece') return 'ECE';
+  if (d.includes('electrical and electronics') || d === 'eee') return 'EEE';
+  if (d.includes('civil') || d === 'ce') return 'CE';
+  if (d.includes('mechanical') || d === 'me') return 'ME';
+  
+  const match = dept.match(/\(([^)]+)\)/);
+  if (match) return match[1].toUpperCase();
+
+  return dept.length > 5 ? dept.split(/\s+/).map(w => w[0]).join('').toUpperCase() : dept.toUpperCase();
+};
+
 export default function AttendanceTab() {
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [data, setData] = useState([]);
@@ -96,6 +111,10 @@ export default function AttendanceTab() {
   const [sortKey, setSortKey] = useState('roomNo');
   const [sortDir, setSortDir] = useState(1);
   const [filterSearch, setFilterSearch] = useState('');
+
+  const [filterSem, setFilterSem] = useState('all');
+  const [filterDept, setFilterDept] = useState('all');
+  const [filterCat, setFilterCat] = useState('all');
 
   const load = async () => {
     setLoading(true);
@@ -109,19 +128,28 @@ export default function AttendanceTab() {
     else { setSortKey(key); setSortDir(1); }
   };
 
-  const filtered = data.filter(r =>
-    r.name.toLowerCase().includes(filterSearch.toLowerCase()) ||
-    r.rollNo.toLowerCase().includes(filterSearch.toLowerCase()) ||
-    (r.roomNo || '').toLowerCase().includes(filterSearch.toLowerCase())
-  );
+  const filtered = data.filter(r => {
+    const matchesSearch = r.name.toLowerCase().includes(filterSearch.toLowerCase()) ||
+      r.rollNo.toLowerCase().includes(filterSearch.toLowerCase()) ||
+      (r.roomNo || '').toLowerCase().includes(filterSearch.toLowerCase());
+    
+    if (!matchesSearch) return false;
+
+    const matchesSem = filterSem === 'all' || r.semester === filterSem;
+    const matchesDept = filterDept === 'all' || getDeptShortcut(r.department) === filterDept;
+    
+    const matchesCat = filterCat === 'all' || 
+      (filterCat === 'obc_general' && (r.category === 'OBC' || r.category === 'General' || !r.category)) ||
+      (r.category === filterCat);
+
+    return matchesSem && matchesDept && matchesCat;
+  });
 
   const sorted = [...filtered].sort((a, b) => {
     const av = a[sortKey], bv = b[sortKey];
     if (typeof av === 'number') return (av - bv) * sortDir;
     return String(av).localeCompare(String(bv)) * sortDir;
   });
-
-
 
   const SortHeader = ({ k, children, className = '' }) => (
     <th className={`py-4 cursor-pointer select-none hover:text-slate-800 transition-colors uppercase tracking-wider text-[10px] font-bold ${className}`}
@@ -137,28 +165,83 @@ export default function AttendanceTab() {
     <div className="space-y-6">
       
       {/* Control panel options */}
-      <div className="bg-white rounded-3xl border border-slate-200/50 p-6 shadow-premium flex flex-col sm:flex-row gap-4 items-center justify-between">
-        <div className="flex flex-1 gap-3 w-full max-w-lg">
-          <div className="relative flex-1">
+      <div className="bg-white rounded-3xl border border-slate-200/50 p-6 shadow-premium flex flex-col md:flex-row gap-4 items-center justify-between">
+        <div className="flex flex-col lg:flex-row gap-3 flex-1 w-full max-w-5xl">
+          <div className="relative min-w-[180px]">
             <MonthPicker value={month} onChange={setMonth} />
           </div>
           {data.length > 0 && (
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                type="text"
-                value={filterSearch}
-                onChange={(e) => setFilterSearch(e.target.value)}
-                placeholder="Filter results..."
-                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200/60 rounded-2xl text-xs font-bold outline-none focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-100 transition-smooth text-slate-800"
-              />
-            </div>
+            <>
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={filterSearch}
+                  onChange={(e) => setFilterSearch(e.target.value)}
+                  placeholder="Search name, room, roll..."
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200/60 rounded-2xl text-xs font-bold outline-none focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-100 transition-smooth text-slate-800"
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-2 items-center">
+                {/* Semester Filter */}
+                <select
+                  value={filterSem}
+                  onChange={(e) => setFilterSem(e.target.value)}
+                  className="px-3 py-3 bg-slate-50 border border-slate-200/60 rounded-2xl text-xs font-bold outline-none focus:border-primary-500 transition-smooth cursor-pointer text-slate-600"
+                >
+                  <option value="all">All Semesters</option>
+                  <option value="S1">S1</option>
+                  <option value="S3">S3</option>
+                  <option value="S5">S5</option>
+                  <option value="S7">S7</option>
+                </select>
+
+                {/* Department Filter */}
+                <select
+                  value={filterDept}
+                  onChange={(e) => setFilterDept(e.target.value)}
+                  className="px-3 py-3 bg-slate-50 border border-slate-200/60 rounded-2xl text-xs font-bold outline-none focus:border-primary-500 transition-smooth cursor-pointer text-slate-600"
+                >
+                  <option value="all">All Depts</option>
+                  <option value="CSE">CSE</option>
+                  <option value="ECE">ECE</option>
+                  <option value="EEE">EEE</option>
+                  <option value="CE">CE</option>
+                  <option value="ME">ME</option>
+                </select>
+
+                {/* Category Filter */}
+                <select
+                  value={filterCat}
+                  onChange={(e) => setFilterCat(e.target.value)}
+                  className="px-3 py-3 bg-slate-50 border border-slate-200/60 rounded-2xl text-xs font-bold outline-none focus:border-primary-500 transition-smooth cursor-pointer text-slate-600"
+                >
+                  <option value="all">All Categories</option>
+                  <option value="obc_general">OBC / General</option>
+                  <option value="SC">SC</option>
+                  <option value="ST">ST</option>
+                  <option value="OEC">OEC</option>
+                  <option value="Fisheries">Fisheries</option>
+                </select>
+
+                {(filterSem !== 'all' || filterDept !== 'all' || filterCat !== 'all') && (
+                  <button
+                    onClick={() => { setFilterSem('all'); setFilterDept('all'); setFilterCat('all'); }}
+                    className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-2xl text-xs font-bold transition-smooth cursor-pointer flex items-center justify-center"
+                    title="Clear Filters"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </>
           )}
         </div>
 
         <button
           onClick={load}
-          className="w-full sm:w-auto py-3 px-6 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl text-xs font-bold transition-smooth flex items-center justify-center gap-1.5 cursor-pointer shadow-glow"
+          className="w-full md:w-auto py-3 px-6 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl text-xs font-bold transition-smooth flex items-center justify-center gap-1.5 cursor-pointer shadow-glow shrink-0"
         >
           {loading ? <Spinner size="sm" color="white" /> : 'Retrieve Sheets'}
         </button>
@@ -190,10 +273,12 @@ export default function AttendanceTab() {
                   <tr className="text-left text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 bg-slate-50/50">
                     <SortHeader k="roomNo" className="pl-4">Room</SortHeader>
                     <SortHeader k="name">Resident</SortHeader>
+                    <SortHeader k="semester">Sem</SortHeader>
                     <th className="py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Roll No</th>
                     <th className="py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Category</th>
                     <th className="py-4 text-[10px] font-bold uppercase tracking-wider text-emerald-600">Present</th>
                     <th className="py-4 text-[10px] font-bold uppercase tracking-wider text-red-500">Absent</th>
+                    <th className="py-4 text-[10px] font-bold uppercase tracking-wider text-amber-600">MC Days</th>
                     <SortHeader k="messCut" className="pr-4 text-orange-600">Mess Cut</SortHeader>
                   </tr>
                 </thead>
@@ -214,6 +299,7 @@ export default function AttendanceTab() {
                             <span className="font-bold text-slate-800 text-sm">{r.name}</span>
                           </div>
                         </td>
+                        <td className="py-4 text-xs font-bold text-indigo-600 uppercase">{r.semester || 'S1'}</td>
                         <td className="py-4 text-xs font-semibold text-slate-500">{r.rollNo}</td>
                         <td className="py-4">
                           <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-lg border ${catStyle[r.category] || catStyle.General}`}>
@@ -222,6 +308,7 @@ export default function AttendanceTab() {
                         </td>
                         <td className="py-4 text-emerald-600 font-extrabold text-xs">{r.presentDays}</td>
                         <td className="py-4 text-red-500 font-semibold text-xs">{r.absentDays}</td>
+                        <td className="py-4 text-amber-600 font-semibold text-xs">{r.messCutDays ?? 0}</td>
                         <td className="py-4 pr-4">
                           <span className={`text-xs font-black px-3 py-1 rounded-xl border ${
                             mc === 0

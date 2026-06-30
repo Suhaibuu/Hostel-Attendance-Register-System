@@ -79,17 +79,14 @@ function StudentRow({ s, idx, onEdit, onDeactivate, onReactivate, onHistory, onA
           </button>
         )}
       </td>
-      <td className="py-4 text-xs font-medium text-slate-600">
-        {s.phone ? `+91 ${s.phone}` : '—'}
+      <td className="py-4 text-xs font-bold text-slate-600 hidden sm:table-cell">
+        <span className="px-2 py-0.5 bg-slate-100/80 rounded border border-slate-200/10 uppercase text-[10px] font-black tracking-wider">{s.category || 'General'}</span>
       </td>
       <td className="py-4 text-xs font-bold text-slate-600 hidden md:table-cell">
         <span className="px-2 py-0.5 bg-slate-100/80 rounded border border-slate-200/10 uppercase">{getDeptShortcut(s.department)}</span>
       </td>
       <td className="py-4 text-xs font-bold text-slate-600 hidden md:table-cell">
-        <div className="flex flex-col gap-1 items-start">
-          <span className="px-2 py-0.5 bg-slate-100/80 rounded border border-slate-200/10">{s.level || 'UG'}</span>
-          <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">{s.category || 'General'}</span>
-        </div>
+        <span className="px-2 py-0.5 bg-slate-100/80 rounded border border-slate-200/10">{s.level || 'UG'}</span>
       </td>
       <td className="py-4 text-xs font-bold text-slate-600 hidden sm:table-cell">
         <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded border border-indigo-100">{s.semester || '—'}</span>
@@ -179,7 +176,7 @@ function StudentTable({ rows, loading, onEdit, onDeactivate, onReactivate, onHis
               <tr className="text-left text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 bg-slate-50/50">
                 <th className="py-4 pl-4">Resident</th>
                 <th className="py-4">Room No</th>
-                <th className="py-4">Phone</th>
+                <th className="py-4 hidden sm:table-cell">Category</th>
                 <th className="py-4 hidden md:table-cell">Dept</th>
                 <th className="py-4 hidden md:table-cell">Level</th>
                 <th className="py-4 hidden sm:table-cell">Semester</th>

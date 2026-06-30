@@ -4,6 +4,7 @@ const studentSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
+    uppercase: true,
     trim: true,
   },
   rollNo: {
@@ -24,10 +25,10 @@ const studentSchema = new mongoose.Schema({
   },
   phone: {
     type: String,
-    required: true,
     trim: true,
+    default: null,
     validate: {
-      validator: (v) => /^\d{10}$/.test(v),
+      validator: (v) => !v || /^\d{10}$/.test(v),
       message: 'Phone must be a 10-digit number',
     },
   },

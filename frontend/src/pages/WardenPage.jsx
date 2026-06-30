@@ -133,7 +133,7 @@ function AddStudentModal({ onSave, onClose }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Full Name</label>
-            <input type="text" value={form.name} onChange={e => set('name', e.target.value)} className={inp} placeholder="Aditya Nair" required />
+            <input type="text" value={form.name} onChange={e => set('name', e.target.value.toUpperCase())} className={`${inp} uppercase`} placeholder="ADITYA NAIR" required />
             {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
           </div>
           <div>

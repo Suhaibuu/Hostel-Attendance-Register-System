@@ -73,9 +73,9 @@ export default function StudentModal({ student, onSave, onClose }) {
             <input 
               type="text" 
               value={form.name} 
-              onChange={(e) => set('name', e.target.value)}
-              className={inputCls} 
-              placeholder="Aditya Nair"
+              onChange={(e) => set('name', e.target.value.toUpperCase())}
+              className={`${inputCls} uppercase`} 
+              placeholder="ADITYA NAIR"
               required 
             />
             {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}

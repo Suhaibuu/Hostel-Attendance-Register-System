@@ -54,11 +54,10 @@ const DateSelector = memo(function DateSelector({ value, onChange }) {
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-          isToday
+        className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer ${isToday
             ? 'bg-primary-50 border-primary-200 text-primary-700'
             : 'bg-amber-50 border-amber-300 text-amber-700'
-        }`}
+          }`}
       >
         <Calendar className="w-3.5 h-3.5" />
         {isToday ? 'Today' : formatDisplayDate(value)}
@@ -75,11 +74,10 @@ const DateSelector = memo(function DateSelector({ value, onChange }) {
                 <button
                   key={d}
                   onClick={() => { onChange(d); setOpen(false); }}
-                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center justify-between ${
-                    d === value
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center justify-between ${d === value
                       ? 'bg-primary-600 text-white'
                       : 'hover:bg-slate-50 text-slate-700'
-                  }`}
+                    }`}
                 >
                   <span>{d === today ? '📅 Today' : formatDisplayDate(d)}</span>
                   {d === value && <CheckCircle2 className="w-3.5 h-3.5" />}
@@ -138,7 +136,7 @@ function AddStudentModal({ onSave, onClose }) {
           </div>
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Roll Number</label>
-            <input type="text" value={form.rollNo} onChange={e => set('rollNo', e.target.value.toUpperCase())} className={`${inp} uppercase`} placeholder="CST221" required />
+            <input type="text" value={form.rollNo} onChange={e => set('rollNo', e.target.value.toUpperCase())} className={`${inp} uppercase`} placeholder="WYD23CS047" required />
             {errors.rollNo && <p className="text-xs text-red-500 mt-1">{errors.rollNo}</p>}
           </div>
           <div className="grid grid-cols-3 gap-3">
@@ -167,9 +165,9 @@ function AddStudentModal({ onSave, onClose }) {
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Phone Number</label>
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400 pointer-events-none">+91</span>
-              <input 
-                type="tel" 
-                value={form.phone} 
+              <input
+                type="tel"
+                value={form.phone}
                 onChange={(e) => set('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
                 placeholder="9876543210"
                 maxLength={10}
@@ -212,11 +210,10 @@ function AddStudentModal({ onSave, onClose }) {
 const StudentCard = memo(function StudentCard({ s, status, onToggle, onHistory, selectedRoom }) {
   return (
     <div
-      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all hover:-translate-y-px ${
-        status === true  ? 'bg-emerald-50/80 border-emerald-300/60' :
-        status === false ? 'bg-red-50/80 border-red-300/60' :
-        'bg-slate-50/50 border-slate-200/80 hover:border-slate-300/80'
-      }`}
+      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all hover:-translate-y-px ${status === true ? 'bg-emerald-50/80 border-emerald-300/60' :
+          status === false ? 'bg-red-50/80 border-red-300/60' :
+            'bg-slate-50/50 border-slate-200/80 hover:border-slate-300/80'
+        }`}
     >
       <div className={`shrink-0 h-10 w-10 rounded-xl flex items-center justify-center text-white text-xs font-black ${getAvatarColor(s.name)}`}>
         {getInitials(s.name)}
@@ -230,7 +227,17 @@ const StudentCard = memo(function StudentCard({ s, status, onToggle, onHistory, 
           <span className="truncate">{s.name}</span>
           <History className="w-3 h-3 text-slate-400 shrink-0" />
         </button>
-        <p className="text-[11px] text-slate-400 font-semibold tracking-wide uppercase">{s.rollNo}</p>
+        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+          <span className="text-[11px] text-slate-400 font-semibold tracking-wide uppercase">{s.rollNo}</span>
+          <span className="h-1 w-1 bg-slate-300 rounded-full" />
+          <span className="text-[10px] text-indigo-600 font-bold bg-indigo-50 px-1.5 py-0.5 rounded uppercase">{s.semester || 'S1'}</span>
+          {s.phone && (
+            <>
+              <span className="h-1 w-1 bg-slate-300 rounded-full" />
+              <span className="text-[10px] text-slate-500 font-medium">📞 +91 {s.phone}</span>
+            </>
+          )}
+        </div>
       </div>
       <div className="flex items-center gap-1.5 shrink-0">
         <button
@@ -255,18 +262,17 @@ const RoomButton = memo(function RoomButton({ room, isSelected, highlight, isTod
   const hl = isToday ? highlight : null;
   const dotClass = !isToday ? 'bg-slate-300'
     : hl === 'fully' ? 'bg-emerald-500'
-    : hl === 'partially' ? 'bg-amber-500'
-    : 'bg-slate-300';
+      : hl === 'partially' ? 'bg-amber-500'
+        : 'bg-slate-300';
 
   return (
     <button
       onClick={onClick}
-      className={`relative rounded-2xl border py-3.5 font-extrabold text-sm transition-smooth cursor-pointer flex flex-col items-center justify-center hover:scale-[1.02] active:scale-[0.98] ${
-        isSelected ? 'bg-primary-600 text-white border-primary-600 shadow-glow' :
-        hl === 'fully' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-        hl === 'partially' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-        'bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300'
-      }`}
+      className={`relative rounded-2xl border py-3.5 font-extrabold text-sm transition-smooth cursor-pointer flex flex-col items-center justify-center hover:scale-[1.02] active:scale-[0.98] ${isSelected ? 'bg-primary-600 text-white border-primary-600 shadow-glow' :
+          hl === 'fully' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+            hl === 'partially' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+              'bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300'
+        }`}
     >
       <span>{room}</span>
       <span className={`absolute top-1.5 right-1.5 h-2 w-2 rounded-full ${dotClass}`} />
@@ -279,22 +285,22 @@ export default function WardenPage() {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('mark');
 
-  const [rooms, setRooms]               = useState([]);
+  const [rooms, setRooms] = useState([]);
   const [roomsLoading, setRoomsLoading] = useState(true);
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [selectedDate, setSelectedDate] = useState(todayISO());
 
-  const [students, setStudents]             = useState([]);
-  const [marks, setMarks]                   = useState({});
+  const [students, setStudents] = useState([]);
+  const [marks, setMarks] = useState({});
   const [studentsLoading, setStudentsLoading] = useState(false);
-  const [submitting, setSubmitting]         = useState(false);
-  const [toast, setToast]                   = useState(null);
-  const [showAddModal, setShowAddModal]     = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
   const [historyStudent, setHistoryStudent] = useState(null);
-  const [todayStats, setTodayStats]         = useState({ present: 0, absent: 0, unmarked: 0, roomHighlight: {} });
+  const [todayStats, setTodayStats] = useState({ present: 0, absent: 0, unmarked: 0, roomHighlight: {} });
 
   const fetchStats = useCallback(async () => {
-    try { setTodayStats(await getTodayStats()); } catch {}
+    try { setTodayStats(await getTodayStats()); } catch { }
   }, []);
 
   useEffect(() => {
@@ -412,15 +418,14 @@ export default function WardenPage() {
                 <button
                   key={t.id}
                   onClick={() => setActiveTab(t.id)}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-smooth relative cursor-pointer shrink-0 ${
-                    isSelected ? 'text-white' : 'text-slate-500 hover:text-slate-700'
-                  }`}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-smooth relative cursor-pointer shrink-0 ${isSelected ? 'text-white' : 'text-slate-500 hover:text-slate-700'
+                    }`}
                 >
                   <Icon className="w-4 h-4 shrink-0" />
                   <span>{t.label}</span>
                   {isSelected && (
-                    <div 
-                      className="absolute inset-0 bg-primary-600 rounded-xl shadow-glow z-[-1] transition-all" 
+                    <div
+                      className="absolute inset-0 bg-primary-600 rounded-xl shadow-glow z-[-1] transition-all"
                     />
                   )}
                 </button>
@@ -438,8 +443,8 @@ export default function WardenPage() {
                 <div className="grid grid-cols-3 gap-3 md:gap-5">
                   {[
                     { label: 'Present', val: todayStats.present, color: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
-                    { label: 'Absent',  val: todayStats.absent,  color: 'bg-red-50 text-red-700 border-red-100' },
-                    { label: 'Unmarked',val: todayStats.unmarked, color: 'bg-amber-50 text-amber-700 border-amber-100' },
+                    { label: 'Absent', val: todayStats.absent, color: 'bg-red-50 text-red-700 border-red-100' },
+                    { label: 'Unmarked', val: todayStats.unmarked, color: 'bg-amber-50 text-amber-700 border-amber-100' },
                   ].map(stat => (
                     <div key={stat.label} className={`p-4 md:p-5 rounded-2xl md:rounded-3xl border ${stat.color} flex items-center justify-between`}>
                       <div>

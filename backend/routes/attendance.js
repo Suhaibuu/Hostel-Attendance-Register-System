@@ -78,7 +78,7 @@ const getRoomAttendanceByDate = async (req, res) => {
     // Only select the fields we actually need
     const students = await Student.find(
       { roomNo, active: true },
-      { name: 1, rollNo: 1 }
+      { name: 1, rollNo: 1, phone: 1, semester: 1 }
     ).sort({ name: 1 }).lean();
 
     // Records for those students on the given date
@@ -99,6 +99,8 @@ const getRoomAttendanceByDate = async (req, res) => {
       studentId: s._id,
       name: s.name,
       rollNo: s.rollNo,
+      phone: s.phone,
+      semester: s.semester,
       present: recordMap[s._id.toString()] ?? null,
     }));
 

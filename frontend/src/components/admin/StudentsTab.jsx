@@ -61,7 +61,16 @@ function StudentRow({ s, idx, onEdit, onDeactivate, onReactivate, onHistory, onA
       </td>
       <td className="py-4 text-xs font-bold text-slate-600 hidden md:table-cell">{s.department || '—'}</td>
       <td className="py-4 text-xs font-bold text-slate-600 hidden md:table-cell">
-        <span className="px-2 py-0.5 bg-slate-100/80 rounded border border-slate-200/10">{s.level || 'UG'}</span>
+        <div className="flex flex-col gap-1 items-start">
+          <span className="px-2 py-0.5 bg-slate-100/80 rounded border border-slate-200/10">{s.level || 'UG'}</span>
+          <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">{s.category || 'General'}</span>
+        </div>
+      </td>
+      <td className="py-4 text-xs font-bold text-slate-600 hidden sm:table-cell">
+        <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded border border-indigo-100">{s.semester || '—'}</span>
+      </td>
+      <td className="py-4 text-xs font-bold text-slate-600 hidden sm:table-cell">
+        {s.phone ? `+91 ${s.phone}` : '—'}
       </td>
       <td className="py-4">
         <Badge variant={s.active ? 'present' : 'absent'}>
@@ -147,6 +156,8 @@ function StudentTable({ rows, loading, onEdit, onDeactivate, onReactivate, onHis
                 <th className="py-4">Room No</th>
                 <th className="py-4 hidden md:table-cell">Dept</th>
                 <th className="py-4 hidden md:table-cell">Level</th>
+                <th className="py-4 hidden sm:table-cell">Semester</th>
+                <th className="py-4 hidden sm:table-cell">Phone</th>
                 <th className="py-4">Status</th>
                 <th className="py-4 text-right pr-4">Operations</th>
               </tr>
@@ -177,6 +188,7 @@ export default function StudentsTab() {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('All');
   const [subTab, setSubTab] = useState('active'); // 'active' | 'unallotted' | 'alumni'
   const [modal, setModal] = useState(null);         // null | 'add' | student obj
   const [historyStudent, setHistoryStudent] = useState(null);
@@ -200,12 +212,16 @@ export default function StudentsTab() {
     for (const s of students) {
       const matchesSearch = !q || s.name.toLowerCase().includes(q) || s.rollNo.toLowerCase().includes(q) || (s.roomNo || '').toLowerCase().includes(q);
       if (!matchesSearch) continue;
+
+      const matchesCategory = categoryFilter === 'All' || (s.category || 'General') === categoryFilter;
+      if (!matchesCategory) continue;
+
       if (!s.active) alumni.push(s);
       else if (s.roomNo) active.push(s);
       else unallotted.push(s);
     }
     return { activeStudents: active, unallottedStudents: unallotted, alumniStudents: alumni };
-  }, [students, q]);
+  }, [students, q, categoryFilter]);
   const displayed          = subTab === 'active' ? activeStudents : subTab === 'unallotted' ? unallottedStudents : alumniStudents;
 
   const handleSave = async (form) => {
@@ -247,17 +263,35 @@ export default function StudentsTab() {
     <div className="space-y-6">
       
       {/* Top filter bar operations - Asymmetric layout */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+      <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
         
-        {/* Search tool panel */}
-        <div className="relative w-full max-w-sm shrink-0">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input 
-            value={search} 
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name, roll, or room..."
-            className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200/60 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary-100 focus:border-primary-500 transition-smooth" 
-          />
+        {/* Search & Filter tools */}
+        <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+          {/* Search tool panel */}
+          <div className="relative w-full sm:w-64 shrink-0">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input 
+              value={search} 
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search name, roll, room..."
+              className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200/60 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary-100 focus:border-primary-500 transition-smooth" 
+            />
+          </div>
+
+          {/* Category Filter dropdown */}
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="bg-white border border-slate-200/60 rounded-2xl px-4 py-3 text-xs font-bold outline-none focus:ring-4 focus:ring-primary-100 focus:border-primary-500 transition-smooth text-slate-700 min-w-[130px] cursor-pointer"
+          >
+            <option value="All">All Categories</option>
+            <option value="General">General</option>
+            <option value="OBC">OBC</option>
+            <option value="SC">SC</option>
+            <option value="ST">ST</option>
+            <option value="OEC">OEC</option>
+            <option value="Fisheries">Fisheries</option>
+          </select>
         </div>
 
         {/* Dynamic sliding sub-tabs */}

@@ -51,11 +51,11 @@ export default function StudentModal({ student, onSave, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="relative w-full max-w-[420px] bg-white rounded-3xl shadow-2xl p-6 border border-slate-100" 
+        className="relative w-full max-w-[420px] bg-white rounded-3xl shadow-2xl p-6 border border-slate-100"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2.5 mb-4">
@@ -70,27 +70,27 @@ export default function StudentModal({ student, onSave, onClose }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Full Name</label>
-            <input 
-              type="text" 
-              value={form.name} 
+            <input
+              type="text"
+              value={form.name}
               onChange={(e) => set('name', e.target.value.toUpperCase())}
-              className={`${inputCls} uppercase`} 
+              className={`${inputCls} uppercase`}
               placeholder="ADITYA NAIR"
-              required 
+              required
             />
             {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
           </div>
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Roll Number (Unique ID)</label>
-            <input 
-              type="text" 
-              value={form.rollNo} 
+            <input
+              type="text"
+              value={form.rollNo}
               onChange={(e) => set('rollNo', e.target.value.toUpperCase())}
-              className={`${inputCls} uppercase`} 
-              disabled={isEdit} 
-              placeholder="CST221"
-              required 
+              className={`${inputCls} uppercase`}
+              disabled={isEdit}
+              placeholder="WYD23CS047"
+              required
             />
             {errors.rollNo && <p className="text-xs text-red-500 mt-1">{errors.rollNo}</p>}
           </div>
@@ -98,12 +98,12 @@ export default function StudentModal({ student, onSave, onClose }) {
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Room No</label>
-              <input 
-                type="text" 
-                value={form.roomNo} 
+              <input
+                type="text"
+                value={form.roomNo}
                 onChange={(e) => set('roomNo', e.target.value)}
                 placeholder="101"
-                className={inputCls} 
+                className={inputCls}
               />
             </div>
             <div>
@@ -128,9 +128,9 @@ export default function StudentModal({ student, onSave, onClose }) {
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Phone Number</label>
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400 pointer-events-none">+91</span>
-              <input 
-                type="tel" 
-                value={form.phone} 
+              <input
+                type="tel"
+                value={form.phone}
                 onChange={(e) => set('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
                 placeholder="9876543210"
                 maxLength={10}
@@ -169,15 +169,15 @@ export default function StudentModal({ student, onSave, onClose }) {
           )}
 
           <div className="flex gap-2 pt-2">
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={onClose}
               className="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl text-xs font-bold transition-smooth cursor-pointer"
             >
               Cancel
             </button>
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               disabled={saving}
               className="flex-1 py-3 px-4 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl text-xs font-bold transition-smooth cursor-pointer shadow-glow flex items-center justify-center gap-1.5"
             >

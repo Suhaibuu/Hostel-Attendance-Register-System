@@ -229,8 +229,6 @@ const StudentCard = memo(function StudentCard({ s, status, messCut, onToggle, on
         </button>
         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
           <span className="text-[11px] text-slate-400 font-semibold tracking-wide uppercase">{s.rollNo}</span>
-          <span className="h-1 w-1 bg-slate-300 rounded-full" />
-          <span className="text-[10px] text-indigo-600 font-bold bg-indigo-50 px-1.5 py-0.5 rounded uppercase">{s.semester || 'S1'}</span>
           {s.phone && (
             <>
               <span className="h-1 w-1 bg-slate-300 rounded-full" />

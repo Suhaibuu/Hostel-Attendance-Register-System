@@ -58,8 +58,6 @@ function StudentRow({ s, idx, onEdit, onDeactivate, onReactivate, onHistory, onA
             </button>
             <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-400 font-bold uppercase tracking-wider flex-wrap">
               <span>{s.rollNo}</span>
-              <span className="h-1 w-1 bg-slate-300 rounded-full shrink-0" />
-              <span className="text-indigo-600 bg-indigo-50 px-1 py-0.2 rounded uppercase shrink-0">{s.semester || 'S1'}</span>
             </div>
           </div>
         </div>

@@ -246,8 +246,6 @@ export default function ControlCenterTab() {
                       <p className="text-xs font-bold text-slate-800">{student.name}</p>
                       <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                         <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{student.rollNo}</span>
-                        <span className="h-1 w-1 bg-slate-300 rounded-full" />
-                        <span className="text-[10px] text-indigo-600 font-bold bg-indigo-50 px-1.5 py-0.5 rounded uppercase">{student.semester || 'S1'}</span>
                         {student.phone && (
                           <>
                             <span className="h-1 w-1 bg-slate-300 rounded-full" />

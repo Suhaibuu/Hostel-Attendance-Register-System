@@ -34,6 +34,13 @@ export const getReport = async (month) => {
   return data;
 };
 
+export const getDateReport = async (date) => {
+  const { data } = await api.get('/api/attendance/report/date', {
+    params: date ? { date } : {},
+  });
+  return data;
+};
+
 export const getTodayStats = async () => {
   const { data } = await api.get('/api/attendance/stats/today');
   return data;

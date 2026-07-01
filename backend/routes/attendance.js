@@ -249,6 +249,60 @@ router.get('/report', async (req, res) => {
   }
 });
 
+// --------------- GET /api/attendance/report/date ---------------
+// Admin only — attendance sheet for a single date
+router.get('/report/date', async (req, res) => {
+  try {
+    if (req.user.role !== 'admin' && req.user.role !== 'warden') {
+      return res.status(403).json({ message: 'Admin or Warden access required' });
+    }
+
+    const date = req.query.date || todayStr();
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ message: 'Invalid date format. Use YYYY-MM-DD' });
+    }
+
+    // Run both queries in parallel
+    const [students, records] = await Promise.all([
+      Student.find(
+        { active: true },
+        { name: 1, rollNo: 1, roomNo: 1, department: 1, category: 1, semester: 1 }
+      ).sort({ roomNo: 1, name: 1 }).lean(),
+
+      Attendance.find(
+        { date },
+        { studentId: 1, present: 1, messCut: 1, _id: 0 }
+      ).lean(),
+    ]);
+
+    // Build lookup: studentId → { present, messCut }
+    const recordMap = {};
+    records.forEach((r) => {
+      recordMap[r.studentId.toString()] = { present: r.present, messCut: r.messCut };
+    });
+
+    const report = students.map((s) => {
+      const rec = recordMap[s._id.toString()];
+      return {
+        studentId: s._id,
+        name: s.name,
+        rollNo: s.rollNo,
+        roomNo: s.roomNo,
+        department: s.department,
+        semester: s.semester || 'S1',
+        category: s.category || 'General',
+        present: rec ? rec.present : null,
+        messCut: rec ? rec.messCut : null,
+      };
+    });
+
+    res.json({ date, report });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // --------------- GET /api/attendance/stats/today ---------------
 // Returns today's overall stats and room highlighting information
 router.get('/stats/today', async (req, res) => {

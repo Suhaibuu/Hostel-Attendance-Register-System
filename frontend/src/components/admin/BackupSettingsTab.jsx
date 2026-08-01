@@ -98,10 +98,8 @@ export default function BackupSettingsTab() {
       fetchConfig(false, false);
     } else if (code && handledCodeRef.current !== code) {
       handledCodeRef.current = code;
-      // Strip ?code= from URL immediately so React re-renders or page refreshes don't re-trigger
-      window.history.replaceState({}, document.title, window.location.pathname);
-
       setIsHandlingOAuth(true);
+      
       handleOAuthCallback(code, `${origin}/admin`)
         .then((res) => {
           if (res.error) {
@@ -109,13 +107,15 @@ export default function BackupSettingsTab() {
           } else {
             setSuccessMsg('Successfully connected to Google Drive!');
           }
-          fetchConfig(false, false);
         })
         .catch((err) => {
           setError(err.message || 'Failed to authenticate with Google');
-          fetchConfig(false, false);
         })
-        .finally(() => setIsHandlingOAuth(false));
+        .finally(() => {
+          setIsHandlingOAuth(false);
+          window.history.replaceState({}, document.title, window.location.pathname);
+          fetchConfig(false, false);
+        });
     } else if (!code && !oauthStatus) {
       fetchConfig();
     }

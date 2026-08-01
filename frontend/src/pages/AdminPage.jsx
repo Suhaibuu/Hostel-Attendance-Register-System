@@ -18,7 +18,14 @@ const tabs = [
 
 export default function AdminPage() {
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState('overview');
+  
+  const [activeTab, setActiveTab] = useState(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('code') || urlParams.has('oauth')) {
+      return 'backup';
+    }
+    return 'overview';
+  });
 
   return (
     <PageWrapper>

@@ -76,7 +76,7 @@ async function getAuthUrl(redirectUri) {
     client_secret,
     redirectUri
   );
-  
+
   // Store redirectUri in config temporarily
   config.oauthCredentials = { ...config.oauthCredentials, redirect_uri: redirectUri };
   config.markModified('oauthCredentials');
@@ -108,7 +108,7 @@ async function handleOAuthCallback(code) {
   config.oauthTokens = tokens;
   config.markModified('oauthTokens');
   await config.save();
-  
+
   return { success: true };
 }
 

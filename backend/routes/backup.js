@@ -153,8 +153,8 @@ router.get('/oauth/url', async (req, res) => {
     // If req.headers.referer is present, use it, stripping query params.
     let redirectUri = req.query.redirectUri;
     if (!redirectUri && req.headers.referer) {
-       const url = new URL(req.headers.referer);
-       redirectUri = url.origin + url.pathname;
+      const url = new URL(req.headers.referer);
+      redirectUri = url.origin + url.pathname;
     }
     const authUrl = await getAuthUrl(redirectUri);
     res.json({ url: authUrl });

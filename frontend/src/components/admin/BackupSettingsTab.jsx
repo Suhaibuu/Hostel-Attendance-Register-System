@@ -85,8 +85,6 @@ export default function BackupSettingsTab() {
     const urlParams = new URLSearchParams(window.location.search);
     const oauthStatus = urlParams.get('oauth');
     const oauthMsg = urlParams.get('msg');
-    const code = urlParams.get('code');
-    const origin = window.location.origin;
     
     if (oauthStatus === 'success') {
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -96,27 +94,7 @@ export default function BackupSettingsTab() {
       window.history.replaceState({}, document.title, window.location.pathname);
       setError(oauthMsg || 'Failed to connect to Google Drive');
       fetchConfig(false, false);
-    } else if (code && handledCodeRef.current !== code) {
-      handledCodeRef.current = code;
-      setIsHandlingOAuth(true);
-      
-      handleOAuthCallback(code, `${origin}/admin`)
-        .then((res) => {
-          if (res.error) {
-            setError(res.error);
-          } else {
-            setSuccessMsg('Successfully connected to Google Drive!');
-          }
-        })
-        .catch((err) => {
-          setError(err.message || 'Failed to authenticate with Google');
-        })
-        .finally(() => {
-          setIsHandlingOAuth(false);
-          window.history.replaceState({}, document.title, window.location.pathname);
-          fetchConfig(false, false);
-        });
-    } else if (!code && !oauthStatus) {
+    } else {
       fetchConfig();
     }
   }, []);
@@ -388,7 +366,7 @@ export default function BackupSettingsTab() {
               Setup a Web Application OAuth Client in Google Cloud Console with Authorized Redirect URI:
               <br />
               <strong className="font-mono bg-slate-100 text-blue-800 px-2 py-1 rounded break-all select-all text-[11px] font-bold block mt-1 border border-slate-200">
-                {window.location.origin}/admin
+                {window.location.origin}/admin/oauth/callback
               </strong>
             </p>
             
@@ -399,7 +377,7 @@ export default function BackupSettingsTab() {
                   clearMessages();
                   setSaving(true);
                   try {
-                    const frontendRedirectUri = `${window.location.origin}/admin`;
+                    const frontendRedirectUri = `${window.location.origin}/admin/oauth/callback`;
                     const res = await getOAuthUrl(frontendRedirectUri, clientId, clientSecret);
                     if (res.url) {
                       window.location.href = res.url;

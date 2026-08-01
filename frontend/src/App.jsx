@@ -8,6 +8,7 @@ const LoginPage         = lazy(() => import('./pages/LoginPage'));
 const WardenPage        = lazy(() => import('./pages/WardenPage'));
 const AdminPage         = lazy(() => import('./pages/AdminPage'));
 const StudentProfilePage = lazy(() => import('./pages/StudentProfilePage'));
+const OAuthCallbackPage = lazy(() => import('./pages/OAuthCallbackPage'));
 
 function PageLoader() {
   return (
@@ -49,6 +50,10 @@ function App() {
 
             <Route path="/admin" element={
               <Guard roles={['admin']}><AdminPage /></Guard>
+            } />
+            
+            <Route path="/admin/oauth/callback" element={
+              <Guard roles={['admin']}><OAuthCallbackPage /></Guard>
             } />
 
             <Route path="/student" element={

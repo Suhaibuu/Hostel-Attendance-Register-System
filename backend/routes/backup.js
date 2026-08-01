@@ -19,16 +19,16 @@ const adminOnly = (req, res, next) => {
 router.use(adminOnly);
 
 // --------------- GET /api/backup/config ---------------
-// Get current backup configuration (credentials are masked)
+// Get current backup configuration
 router.get('/config', async (req, res) => {
   try {
     const config = await getConfig();
 
-    // Mask oauth credentials - only return client_id
     let oauthCredentials = null;
     if (config.oauthCredentials) {
       oauthCredentials = {
         client_id: config.oauthCredentials.client_id || null,
+        client_secret: config.oauthCredentials.client_secret || null,
         configured: !!(config.oauthTokens && config.oauthTokens.refresh_token),
       };
     }
@@ -55,7 +55,16 @@ router.put('/config', async (req, res) => {
     if (enabled !== undefined) config.enabled = enabled;
 
     if (oauthCredentials !== undefined) {
-      config.oauthCredentials = oauthCredentials;
+      if (oauthCredentials === null) {
+        config.oauthCredentials = null;
+      } else {
+        const existing = config.oauthCredentials || {};
+        config.oauthCredentials = {
+          client_id: oauthCredentials.client_id !== undefined ? oauthCredentials.client_id : existing.client_id,
+          client_secret: oauthCredentials.client_secret ? oauthCredentials.client_secret : existing.client_secret,
+          redirect_uri: oauthCredentials.redirect_uri || existing.redirect_uri,
+        };
+      }
       config.markModified('oauthCredentials');
     }
 
@@ -67,10 +76,11 @@ router.put('/config', async (req, res) => {
     config.updatedAt = new Date();
     await config.save();
 
-    let maskedOauth = null;
+    let responseOauth = null;
     if (config.oauthCredentials) {
-      maskedOauth = {
+      responseOauth = {
         client_id: config.oauthCredentials.client_id || null,
+        client_secret: config.oauthCredentials.client_secret || null,
         configured: !!(config.oauthTokens && config.oauthTokens.refresh_token),
       };
     }
@@ -78,7 +88,7 @@ router.put('/config', async (req, res) => {
     res.json({
       message: 'Backup configuration updated',
       enabled: config.enabled,
-      oauthCredentials: maskedOauth,
+      oauthCredentials: responseOauth,
       driveFolderId: config.driveFolderId,
     });
   } catch (err) {

@@ -84,7 +84,7 @@ async function getAuthUrl(redirectUri) {
 
   return oauth2Client.generateAuthUrl({
     access_type: 'offline', // Required to get a refresh token
-    prompt: 'consent', // Force consent to ensure refresh token is returned
+    prompt: 'consent select_account', // Force consent & account chooser prompt
     scope: ['https://www.googleapis.com/auth/drive'],
   });
 }

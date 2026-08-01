@@ -30,7 +30,7 @@ async function getConfig() {
 }
 
 /**
- * Build an authenticated Google Drive client from stored config (OAuth2 or Service Account).
+ * Build an authenticated Google Drive client from stored config (OAuth2).
  */
 function buildDriveClient(config) {
   if (config.oauthTokens && config.oauthTokens.refresh_token) {
@@ -42,14 +42,6 @@ function buildDriveClient(config) {
     );
     oauth2Client.setCredentials(config.oauthTokens);
     return google.drive({ version: 'v3', auth: oauth2Client });
-  }
-
-  if (config.serviceAccountJson) {
-    const auth = new google.auth.GoogleAuth({
-      credentials: config.serviceAccountJson,
-      scopes: ['https://www.googleapis.com/auth/drive'],
-    });
-    return google.drive({ version: 'v3', auth });
   }
 
   throw new Error('No Google credentials configured');
@@ -114,7 +106,6 @@ async function handleOAuthCallback(code) {
 
   const { tokens } = await oauth2Client.getToken(code);
   config.oauthTokens = tokens;
-  config.authType = 'oauth2';
   config.markModified('oauthTokens');
   await config.save();
   
@@ -202,7 +193,7 @@ async function performBackup() {
   const config = await getConfig();
 
   // Pre-flight checks
-  const hasCreds = config.serviceAccountJson || (config.oauthTokens && config.oauthTokens.refresh_token);
+  const hasCreds = config.oauthTokens && config.oauthTokens.refresh_token;
   if (!config.enabled) {
     _backupInProgress = false;
     return { status: 'skipped', reason: 'disabled' };
@@ -292,7 +283,7 @@ async function scheduleBackup() {
     return;
   }
 
-  const hasCreds = config.serviceAccountJson || (config.oauthTokens && config.oauthTokens.refresh_token);
+  const hasCreds = config.oauthTokens && config.oauthTokens.refresh_token;
   if (!config.enabled || !hasCreds || !config.driveFolderId) {
     return; // Not configured — silently skip
   }
@@ -316,7 +307,7 @@ async function scheduleBackup() {
  */
 async function testConnection() {
   const config = await getConfig();
-  const hasCreds = config.serviceAccountJson || (config.oauthTokens && config.oauthTokens.refresh_token);
+  const hasCreds = config.oauthTokens && config.oauthTokens.refresh_token;
 
   if (!hasCreds || !config.driveFolderId) {
     return { success: false, error: 'Google credentials or folder ID not configured' };
@@ -348,7 +339,7 @@ async function testConnection() {
  */
 async function backfillMissingDates() {
   const config = await getConfig();
-  const hasCreds = config.serviceAccountJson || (config.oauthTokens && config.oauthTokens.refresh_token);
+  const hasCreds = config.oauthTokens && config.oauthTokens.refresh_token;
 
   if (!hasCreds || !config.driveFolderId) {
     return { status: 'failed', error: 'Not configured' };
@@ -443,7 +434,7 @@ async function backfillMissingDates() {
  */
 async function createDriveFolder() {
   const config = await getConfig();
-  const hasCreds = config.serviceAccountJson || (config.oauthTokens && config.oauthTokens.refresh_token);
+  const hasCreds = config.oauthTokens && config.oauthTokens.refresh_token;
 
   if (!hasCreds) {
     return { success: false, error: 'Google credentials not configured' };

@@ -53,10 +53,7 @@ export default function BackupSettingsTab() {
   // Form state
   const [enabled, setEnabled] = useState(false);
   const [folderIdInput, setFolderIdInput] = useState('');
-  const [serviceJsonText, setServiceJsonText] = useState('');
-  const [showJsonInput, setShowJsonInput] = useState(false);
 
-  const [authType, setAuthType] = useState('service_account');
   const [clientId, setClientId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
   
@@ -69,7 +66,6 @@ export default function BackupSettingsTab() {
       setConfig(data);
       setEnabled(data.enabled);
       setFolderIdInput(data.driveFolderId || '');
-      setAuthType(data.authType || 'service_account');
       if (data.oauthCredentials) {
         setClientId(data.oauthCredentials.client_id || '');
         setClientSecret(data.oauthCredentials.client_secret || '');
@@ -117,36 +113,19 @@ export default function BackupSettingsTab() {
     clearMessages();
     setSaving(true);
     try {
+      const origin = window.location.origin;
       const payload = {
         enabled,
         driveFolderId: folderIdInput || null,
-        authType,
-      };
-
-      if (authType === 'oauth2') {
-        const origin = window.location.origin;
-        payload.oauthCredentials = {
+        oauthCredentials: {
           client_id: clientId,
           client_secret: clientSecret,
           redirect_uri: `${origin}/admin`
-        };
-      }
-
-      // Only include serviceAccountJson if the user entered new credentials
-      if (authType === 'service_account' && serviceJsonText.trim()) {
-        try {
-          payload.serviceAccountJson = JSON.parse(serviceJsonText);
-        } catch {
-          setError('Invalid JSON format for service account credentials');
-          setSaving(false);
-          return;
         }
-      }
+      };
 
       const result = await updateBackupConfig(payload);
       setSuccessMsg(result.message || 'Configuration saved');
-      setServiceJsonText('');
-      setShowJsonInput(false);
       await fetchConfig();
     } catch (err) {
       setError(err.message);
@@ -188,7 +167,9 @@ export default function BackupSettingsTab() {
     clearMessages();
     setSaving(true);
     try {
-      await updateBackupConfig({ serviceAccountJson: null, enabled: false });
+      await updateBackupConfig({ oauthCredentials: null, enabled: false });
+      setClientId('');
+      setClientSecret('');
       setSuccessMsg('Credentials removed and backup disabled');
       setEnabled(false);
       await fetchConfig();
@@ -208,7 +189,7 @@ export default function BackupSettingsTab() {
     );
   }
 
-  const isConfigured = config?.serviceAccount?.configured;
+  const isConfigured = config?.oauthCredentials?.configured;
   const lastBackup = config?.lastBackup;
 
   return (
@@ -259,17 +240,9 @@ export default function BackupSettingsTab() {
               </div>
               <div className="p-3 bg-slate-50 rounded-xl space-y-1.5">
                 <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">
-                  {config.authType === 'oauth2' ? 'OAuth 2.0 Personal Drive' : 'Service Account'}
+                  OAuth 2.0 Personal Drive
                 </p>
-                {config.authType === 'service_account' && config.serviceAccount && (
-                  <>
-                    <p className="text-xs text-slate-700 font-mono break-all">{config.serviceAccount.client_email}</p>
-                    <p className="text-[10px] text-slate-400 mt-1">Project: {config.serviceAccount.project_id}</p>
-                  </>
-                )}
-                {config.authType === 'oauth2' && (
-                  <p className="text-xs text-slate-700 font-mono break-all">Connected to Google Account</p>
-                )}
+                <p className="text-xs text-slate-700 font-mono break-all">Connected to Google Account</p>
               </div>
             </div>
           ) : (
@@ -347,13 +320,13 @@ export default function BackupSettingsTab() {
           </button>
         </div>
 
-        {/* Authentication Method */}
+        {/* Google OAuth Credentials */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Key className="w-3.5 h-3.5 text-slate-400" />
               <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                Authentication Method
+                Google OAuth Credentials
               </label>
             </div>
             {isConfigured && (
@@ -368,96 +341,54 @@ export default function BackupSettingsTab() {
             )}
           </div>
 
-          <div className="flex gap-4">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="authType"
-                value="service_account"
-                checked={authType === 'service_account'}
-                onChange={(e) => setAuthType(e.target.value)}
-                className="text-primary-600 focus:ring-primary-500"
-              />
-              <span className="text-sm text-slate-700 font-medium">Service Account JSON</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="authType"
-                value="oauth2"
-                checked={authType === 'oauth2'}
-                onChange={(e) => setAuthType(e.target.value)}
-                className="text-primary-600 focus:ring-primary-500"
-              />
-              <span className="text-sm text-slate-700 font-medium">Personal Drive (OAuth 2.0)</span>
-            </label>
-          </div>
-
-          {authType === 'service_account' && (
-            <div className="animate-fade-in space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-200">
-              <textarea
-                value={serviceJsonText}
-                onChange={(e) => setServiceJsonText(e.target.value)}
-                rows={6}
-                placeholder='Paste your Google service account JSON here to update...'
-                className="w-full p-4 text-xs font-mono bg-slate-900 text-emerald-400 rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
-              />
-              <p className="text-[11px] text-slate-500">
-                Downloaded from Google Cloud Console. Must share the Drive folder with the service account email.
-              </p>
-            </div>
-          )}
-
-          {authType === 'oauth2' && (
-            <div className="animate-fade-in space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Client ID</label>
-                  <input
-                    type="text"
-                    value={clientId}
-                    onChange={(e) => setClientId(e.target.value)}
-                    placeholder="Enter OAuth Client ID"
-                    className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Client Secret</label>
-                  <input
-                    type="password"
-                    value={clientSecret}
-                    onChange={(e) => setClientSecret(e.target.value)}
-                    placeholder="Enter OAuth Client Secret"
-                    className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono"
-                  />
-                </div>
+          <div className="animate-fade-in space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Client ID</label>
+                <input
+                  type="text"
+                  value={clientId}
+                  onChange={(e) => setClientId(e.target.value)}
+                  placeholder="Enter OAuth Client ID"
+                  className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono"
+                />
               </div>
-              <p className="text-[11px] text-slate-500">
-                Setup a Web Application OAuth Client in Google Cloud Console with Redirect URI: <strong className="font-mono bg-slate-200 px-1 rounded">{window.location.origin}/admin</strong>
-              </p>
-              
-              {clientId && clientSecret && (
-                <button
-                  onClick={async (e) => {
-                    e.preventDefault();
-                    clearMessages();
-                    // Save first before redirecting so credentials are kept
-                    await handleSave();
-                    try {
-                      const res = await getOAuthUrl(`${window.location.origin}/admin`);
-                      window.location.href = res.url;
-                    } catch (err) {
-                      setError(err.message);
-                    }
-                  }}
-                  className="flex items-center justify-center gap-2 w-full py-2.5 mt-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-smooth"
-                >
-                  <User className="w-4 h-4" />
-                  Sign in with Google
-                </button>
-              )}
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Client Secret</label>
+                <input
+                  type="password"
+                  value={clientSecret}
+                  onChange={(e) => setClientSecret(e.target.value)}
+                  placeholder="Enter OAuth Client Secret"
+                  className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono"
+                />
+              </div>
             </div>
-          )}
+            <p className="text-[11px] text-slate-500">
+              Setup a Web Application OAuth Client in Google Cloud Console with Redirect URI: <strong className="font-mono bg-slate-200 px-1 rounded">{window.location.origin}/admin</strong>
+            </p>
+            
+            {clientId && clientSecret && (
+              <button
+                onClick={async (e) => {
+                  e.preventDefault();
+                  clearMessages();
+                  // Save first before redirecting so credentials are kept
+                  await handleSave();
+                  try {
+                    const res = await getOAuthUrl(`${window.location.origin}/admin`);
+                    window.location.href = res.url;
+                  } catch (err) {
+                    setError(err.message);
+                  }
+                }}
+                className="flex items-center justify-center gap-2 w-full py-2.5 mt-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-smooth"
+              >
+                <User className="w-4 h-4" />
+                Sign in with Google
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Drive Folder */}

@@ -24,19 +24,18 @@ router.get('/config', async (req, res) => {
   try {
     const config = await getConfig();
 
-    // Mask service account details — only show email and project
-    let serviceAccountInfo = null;
-    if (config.serviceAccountJson) {
-      serviceAccountInfo = {
-        client_email: config.serviceAccountJson.client_email || null,
-        project_id: config.serviceAccountJson.project_id || null,
-        configured: true,
+    // Mask oauth credentials - only return client_id
+    let oauthCredentials = null;
+    if (config.oauthCredentials) {
+      oauthCredentials = {
+        client_id: config.oauthCredentials.client_id || null,
+        configured: !!(config.oauthTokens && config.oauthTokens.refresh_token),
       };
     }
 
     res.json({
       enabled: config.enabled,
-      serviceAccount: serviceAccountInfo,
+      oauthCredentials,
       driveFolderId: config.driveFolderId,
       lastBackup: config.lastBackup,
       updatedAt: config.updatedAt,
@@ -48,26 +47,16 @@ router.get('/config', async (req, res) => {
 
 // --------------- PUT /api/backup/config ---------------
 // Update backup configuration
-// Body: { enabled?, serviceAccountJson?, driveFolderId? }
 router.put('/config', async (req, res) => {
   try {
-    const { enabled, serviceAccountJson, driveFolderId } = req.body;
+    const { enabled, driveFolderId, oauthCredentials } = req.body;
     const config = await getConfig();
 
     if (enabled !== undefined) config.enabled = enabled;
 
-    if (serviceAccountJson !== undefined) {
-      // Validate it looks like a service account JSON
-      if (serviceAccountJson && typeof serviceAccountJson === 'object') {
-        if (!serviceAccountJson.client_email || !serviceAccountJson.private_key) {
-          return res.status(400).json({
-            message: 'Invalid service account JSON. Must contain client_email and private_key.',
-          });
-        }
-        config.serviceAccountJson = serviceAccountJson;
-      } else if (serviceAccountJson === null) {
-        config.serviceAccountJson = null;
-      }
+    if (oauthCredentials !== undefined) {
+      config.oauthCredentials = oauthCredentials;
+      config.markModified('oauthCredentials');
     }
 
     if (driveFolderId !== undefined) {
@@ -78,20 +67,18 @@ router.put('/config', async (req, res) => {
     config.updatedAt = new Date();
     await config.save();
 
-    // Return masked response
-    let serviceAccountInfo = null;
-    if (config.serviceAccountJson) {
-      serviceAccountInfo = {
-        client_email: config.serviceAccountJson.client_email,
-        project_id: config.serviceAccountJson.project_id,
-        configured: true,
+    let maskedOauth = null;
+    if (config.oauthCredentials) {
+      maskedOauth = {
+        client_id: config.oauthCredentials.client_id || null,
+        configured: !!(config.oauthTokens && config.oauthTokens.refresh_token),
       };
     }
 
     res.json({
       message: 'Backup configuration updated',
       enabled: config.enabled,
-      serviceAccount: serviceAccountInfo,
+      oauthCredentials: maskedOauth,
       driveFolderId: config.driveFolderId,
     });
   } catch (err) {

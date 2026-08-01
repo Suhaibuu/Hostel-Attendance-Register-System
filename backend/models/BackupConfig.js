@@ -14,17 +14,6 @@ const backupConfigSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
-  // Auth mode: 'service_account' or 'oauth2'
-  authType: {
-    type: String,
-    enum: ['service_account', 'oauth2'],
-    default: 'service_account',
-  },
-  // Google Service Account JSON credentials (stored as object)
-  serviceAccountJson: {
-    type: mongoose.Schema.Types.Mixed,
-    default: null,
-  },
   // OAuth 2.0 credentials (client_id, client_secret, redirect_uri)
   oauthCredentials: {
     type: mongoose.Schema.Types.Mixed,

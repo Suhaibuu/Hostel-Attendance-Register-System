@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { getReport, getDateReport } from '../../api/attendance';
 import Card from '../ui/Card';
 import Spinner from '../ui/Spinner';
-import { Calendar, Search, ArrowDownWideNarrow, Users, Sparkles, ChevronLeft, ChevronRight, RotateCcw, LayoutList, CalendarDays } from 'lucide-react';
+import { Calendar, Search, ArrowDownWideNarrow, Users, Sparkles, ChevronLeft, ChevronRight, RotateCcw, LayoutList, CalendarDays, Download } from 'lucide-react';
 
 const avatarColors = ['bg-indigo-500', 'bg-emerald-500', 'bg-violet-500', 'bg-amber-500', 'bg-pink-500'];
 const getColor = (n) => avatarColors[(n || 'A').charCodeAt(0) % avatarColors.length];
@@ -216,6 +216,58 @@ export default function AttendanceTab() {
     unmarked: dateData.report.filter(r => r.present === null).length,
   } : null;
 
+  const handleDownloadCSV = () => {
+    // 1. Determine number of days in the selected month
+    const [yearStr, monthStr] = month.split('-');
+    const year = parseInt(yearStr, 10);
+    const monthIndex = parseInt(monthStr, 10) - 1;
+    const noOfDays = new Date(year, monthIndex + 1, 0).getDate();
+
+    // 2. Prepare CSV rows (using sorted/filtered data)
+    const rows = [
+      ['SL. NO', 'NAME', 'ROOM NO', 'CLASS', 'SC/ST/OEC/FISCHERIES', 'NO OF DAYS', 'MESS CUT', 'NO OF PRE DAYS']
+    ];
+
+    sorted.forEach((r, index) => {
+      const slNo = index + 1;
+      const name = r.name || '';
+      const roomNo = r.roomNo || '';
+      const dept = getDeptShortcut(r.department);
+      const studentClass = (r.semester || '') + dept;
+      const cat = r.category || '';
+      // Only include specific categories as requested
+      const specialCat = ['SC', 'ST', 'OEC', 'Fisheries'].includes(cat) ? (cat === 'Fisheries' ? 'FISCHERIES' : cat) : '';
+      const messCut = r.messCut ?? 0;
+      const preDays = r.presentDays ?? 0;
+
+      rows.push([
+        slNo,
+        `"${name}"`,
+        `"${roomNo}"`,
+        `"${studentClass}"`,
+        `"${specialCat}"`,
+        noOfDays,
+        messCut,
+        preDays
+      ]);
+    });
+
+    const csvString = rows.map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    
+    // Format month name (e.g., FEBRUARY-2025)
+    const monthName = MONTHS[monthIndex].toUpperCase();
+    link.setAttribute('download', `${monthName}_${year}_ATTENDANCE.csv`);
+    
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-6">
       {/* ── Control Panel ── */}
@@ -257,8 +309,17 @@ export default function AttendanceTab() {
 
         {/* Row 2: Search + Filters (only when data loaded) */}
         {hasData && (
-          <div className="flex flex-col sm:flex-row gap-3 items-center">
+          <div className="flex flex-col sm:flex-row gap-3 items-center w-full">
             <FilterControls {...{ filterSearch, setFilterSearch, filterSem, setFilterSem, filterDept, setFilterDept, filterCat, setFilterCat, filterStatus, setFilterStatus, showStatusFilter: viewMode === 'daily' }} />
+            
+            {viewMode === 'monthly' && (
+              <button 
+                onClick={handleDownloadCSV}
+                className="ml-auto px-4 py-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-2xl text-xs font-bold transition-smooth flex items-center justify-center gap-2 cursor-pointer border border-emerald-200/60 shrink-0"
+              >
+                <Download className="w-4 h-4" /> Export CSV
+              </button>
+            )}
           </div>
         )}
       </div>

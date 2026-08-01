@@ -12,6 +12,28 @@ import {
   Shield, Folder, FolderPlus, Key, AlertTriangle, Wifi, Play, Trash2, ExternalLink,
 } from 'lucide-react';
 
+function renderTextWithLinks(text) {
+  if (!text) return null;
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+  return parts.map((part, i) => {
+    if (part.match(/^https?:\/\//)) {
+      return (
+        <a
+          key={i}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline font-bold text-blue-600 hover:text-blue-800 break-all"
+        >
+          {part}
+        </a>
+      );
+    }
+    return part;
+  });
+}
+
 export default function BackupSettingsTab() {
   const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -164,7 +186,7 @@ export default function BackupSettingsTab() {
           <XCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
           <div>
             <p className="text-xs font-bold text-red-700 uppercase tracking-wider">Error</p>
-            <p className="text-sm text-red-600 mt-0.5">{error}</p>
+            <p className="text-sm text-red-600 mt-0.5 break-words">{renderTextWithLinks(error)}</p>
           </div>
         </div>
       )}
@@ -232,7 +254,7 @@ export default function BackupSettingsTab() {
                   {new Date(lastBackup.timestamp).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
                 </p>
                 {lastBackup.error && (
-                  <p className="text-xs text-red-500 mt-1">{lastBackup.error}</p>
+                  <p className="text-xs text-red-500 mt-1 break-words">{renderTextWithLinks(lastBackup.error)}</p>
                 )}
               </div>
             </div>
@@ -444,12 +466,12 @@ export default function BackupSettingsTab() {
             )}
           </button>
           {testResult && (
-            <div className={`p-3 rounded-xl text-xs font-medium animate-fade-in ${
+            <div className={`p-3 rounded-xl text-xs font-medium animate-fade-in break-words ${
               testResult.success
                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/50'
                 : 'bg-red-50 text-red-700 border border-red-200/50'
             }`}>
-              {testResult.success ? '✅ Connection successful!' : `❌ ${testResult.error}`}
+              {testResult.success ? '✅ Connection successful!' : <span>❌ {renderTextWithLinks(testResult.error)}</span>}
             </div>
           )}
         </div>
@@ -470,14 +492,14 @@ export default function BackupSettingsTab() {
             )}
           </button>
           {triggerResult && (
-            <div className={`p-3 rounded-xl text-xs font-medium animate-fade-in ${
+            <div className={`p-3 rounded-xl text-xs font-medium animate-fade-in break-words ${
               triggerResult.status === 'success'
                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/50'
                 : 'bg-red-50 text-red-700 border border-red-200/50'
             }`}>
               {triggerResult.status === 'success'
                 ? `✅ Backup created: ${triggerResult.fileName}`
-                : `❌ ${triggerResult.error || triggerResult.reason || 'Backup failed'}`
+                : <span>❌ {renderTextWithLinks(triggerResult.error || triggerResult.reason || 'Backup failed')}</span>
               }
             </div>
           )}
@@ -511,14 +533,14 @@ export default function BackupSettingsTab() {
             )}
           </button>
           {backfillResult && (
-            <div className={`p-3 rounded-xl text-xs font-medium animate-fade-in ${
+            <div className={`p-3 rounded-xl text-xs font-medium animate-fade-in break-words ${
               backfillResult.status === 'success'
                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/50'
                 : 'bg-red-50 text-red-700 border border-red-200/50'
             }`}>
               {backfillResult.status === 'success'
                 ? `✅ ${backfillResult.message}`
-                : `❌ ${backfillResult.error || 'Backfill failed'}`
+                : <span>❌ {renderTextWithLinks(backfillResult.error || 'Backfill failed')}</span>
               }
             </div>
           )}

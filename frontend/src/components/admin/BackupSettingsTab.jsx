@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   getBackupConfig,
   updateBackupConfig,
@@ -58,6 +58,7 @@ export default function BackupSettingsTab() {
   const [clientSecret, setClientSecret] = useState('');
   
   const [isHandlingOAuth, setIsHandlingOAuth] = useState(false);
+  const handledCodeRef = useRef(null);
 
   const fetchConfig = async (clearUrlParams = false) => {
     setLoading(true);
@@ -83,20 +84,25 @@ export default function BackupSettingsTab() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get('code');
+    const origin = window.location.origin;
     
-    if (code) {
+    if (code && handledCodeRef.current !== code) {
+      handledCodeRef.current = code;
+      // Strip ?code= from URL immediately so React re-renders or page refreshes don't re-trigger
+      window.history.replaceState({}, document.title, window.location.pathname);
+
       setIsHandlingOAuth(true);
-      handleOAuthCallback(code)
+      handleOAuthCallback(code, `${origin}/admin`)
         .then(() => {
           setSuccessMsg('Successfully connected to Google Drive!');
-          fetchConfig(true);
+          fetchConfig();
         })
         .catch((err) => {
           setError(err.message || 'Failed to authenticate with Google');
-          fetchConfig(true);
+          fetchConfig();
         })
         .finally(() => setIsHandlingOAuth(false));
-    } else {
+    } else if (!code) {
       fetchConfig();
     }
   }, []);
@@ -373,19 +379,23 @@ export default function BackupSettingsTab() {
                 onClick={async (e) => {
                   e.preventDefault();
                   clearMessages();
-                  // Save first before redirecting so credentials are kept
-                  await handleSave();
+                  setSaving(true);
                   try {
-                    const res = await getOAuthUrl(`${window.location.origin}/admin`);
-                    window.location.href = res.url;
+                    const origin = window.location.origin;
+                    const res = await getOAuthUrl(`${origin}/admin`, clientId, clientSecret);
+                    if (res.url) {
+                      window.location.href = res.url;
+                    }
                   } catch (err) {
                     setError(err.message);
+                    setSaving(false);
                   }
                 }}
-                className="flex items-center justify-center gap-2 w-full py-2.5 mt-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-smooth"
+                disabled={saving}
+                className="flex items-center justify-center gap-2 w-full py-2.5 mt-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-smooth cursor-pointer disabled:opacity-50"
               >
                 <User className="w-4 h-4" />
-                Sign in with Google
+                {saving ? 'Connecting...' : 'Sign in with Google'}
               </button>
             )}
           </div>

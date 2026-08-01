@@ -148,9 +148,21 @@ router.post('/create-folder', async (req, res) => {
 // Generate Google OAuth URL
 router.get('/oauth/url', async (req, res) => {
   try {
+    const { client_id, client_secret } = req.query;
+    const config = await getConfig();
+
+    // If new credentials were provided in query, update them first
+    if (client_id || client_secret) {
+      config.oauthCredentials = {
+        client_id: client_id || (config.oauthCredentials && config.oauthCredentials.client_id),
+        client_secret: client_secret || (config.oauthCredentials && config.oauthCredentials.client_secret),
+        redirect_uri: req.query.redirectUri || (config.oauthCredentials && config.oauthCredentials.redirect_uri),
+      };
+      config.markModified('oauthCredentials');
+      await config.save();
+    }
+
     const { getAuthUrl } = require('../services/backupService');
-    // The redirect URI should be the frontend admin page exactly without query params
-    // If req.headers.referer is present, use it, stripping query params.
     let redirectUri = req.query.redirectUri;
     if (!redirectUri && req.headers.referer) {
       const url = new URL(req.headers.referer);
@@ -159,7 +171,7 @@ router.get('/oauth/url', async (req, res) => {
     const authUrl = await getAuthUrl(redirectUri);
     res.json({ url: authUrl });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message, error: err.message });
   }
 });
 
@@ -167,15 +179,15 @@ router.get('/oauth/url', async (req, res) => {
 // Handle OAuth callback code
 router.post('/oauth/callback', async (req, res) => {
   try {
-    const { code } = req.body;
+    const { code, redirectUri } = req.body;
     if (!code) {
-      return res.status(400).json({ success: false, error: 'Code is required' });
+      return res.status(400).json({ success: false, message: 'Code is required', error: 'Code is required' });
     }
     const { handleOAuthCallback } = require('../services/backupService');
-    const result = await handleOAuthCallback(code);
+    const result = await handleOAuthCallback(code, redirectUri);
     res.json(result);
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message, error: err.message });
   }
 });
 

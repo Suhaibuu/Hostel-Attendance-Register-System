@@ -92,24 +92,37 @@ async function getAuthUrl(redirectUri) {
 /**
  * Handle Google OAuth2 callback (exchange code for tokens).
  */
-async function handleOAuthCallback(code) {
+async function handleOAuthCallback(code, redirectUri) {
   const config = await getConfig();
   if (!config.oauthCredentials || !config.oauthCredentials.client_id) {
     throw new Error('OAuth client credentials not configured');
   }
-  const { client_id, client_secret, redirect_uri } = config.oauthCredentials;
+  const { client_id, client_secret } = config.oauthCredentials;
+  const effectiveRedirectUri = redirectUri || config.oauthCredentials.redirect_uri;
+
   const oauth2Client = new google.auth.OAuth2(
     client_id,
     client_secret,
-    redirect_uri
+    effectiveRedirectUri
   );
 
-  const { tokens } = await oauth2Client.getToken(code);
-  config.oauthTokens = tokens;
-  config.markModified('oauthTokens');
-  await config.save();
-
-  return { success: true };
+  try {
+    const { tokens } = await oauth2Client.getToken(code);
+    if (config.oauthTokens && config.oauthTokens.refresh_token && !tokens.refresh_token) {
+      tokens.refresh_token = config.oauthTokens.refresh_token;
+    }
+    config.oauthTokens = tokens;
+    config.markModified('oauthTokens');
+    await config.save();
+    return { success: true };
+  } catch (err) {
+    // If tokens were already acquired and stored in DB, ignore token exchange error (e.g. code re-used)
+    if (config.oauthTokens && (config.oauthTokens.refresh_token || config.oauthTokens.access_token)) {
+      console.log('OAuth code exchange failed, but valid tokens already exist in DB:', err.message);
+      return { success: true, message: 'Already connected' };
+    }
+    throw err;
+  }
 }
 
 /**

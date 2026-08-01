@@ -30,14 +30,14 @@ export const createDriveFolder = async () => {
   return data;
 };
 
-export const getOAuthUrl = async (redirectUri) => {
+export const getOAuthUrl = async (redirectUri, clientId, clientSecret) => {
   const { data } = await api.get('/api/backup/oauth/url', {
-    params: { redirectUri }
+    params: { redirectUri, client_id: clientId, client_secret: clientSecret }
   });
   return data;
 };
 
-export const handleOAuthCallback = async (code) => {
-  const { data } = await api.post('/api/backup/oauth/callback', { code });
+export const handleOAuthCallback = async (code, redirectUri) => {
+  const { data } = await api.post('/api/backup/oauth/callback', { code, redirectUri });
   return data;
 };

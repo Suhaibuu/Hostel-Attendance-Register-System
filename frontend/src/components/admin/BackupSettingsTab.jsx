@@ -60,8 +60,8 @@ export default function BackupSettingsTab() {
   const [isHandlingOAuth, setIsHandlingOAuth] = useState(false);
   const handledCodeRef = useRef(null);
 
-  const fetchConfig = async (clearUrlParams = false) => {
-    setLoading(true);
+  const fetchConfig = async (clearUrlParams = false, showSpinner = true) => {
+    if (showSpinner) setLoading(true);
     try {
       const data = await getBackupConfig();
       setConfig(data);
@@ -74,7 +74,7 @@ export default function BackupSettingsTab() {
     } catch (err) {
       setError(err.message);
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
       if (clearUrlParams) {
         window.history.replaceState({}, document.title, window.location.pathname);
       }
@@ -93,13 +93,17 @@ export default function BackupSettingsTab() {
 
       setIsHandlingOAuth(true);
       handleOAuthCallback(code, `${origin}/admin`)
-        .then(() => {
-          setSuccessMsg('Successfully connected to Google Drive!');
-          fetchConfig();
+        .then((res) => {
+          if (res.error) {
+            setError(res.error);
+          } else {
+            setSuccessMsg('Successfully connected to Google Drive!');
+          }
+          fetchConfig(false, false);
         })
         .catch((err) => {
           setError(err.message || 'Failed to authenticate with Google');
-          fetchConfig();
+          fetchConfig(false, false);
         })
         .finally(() => setIsHandlingOAuth(false));
     } else if (!code) {

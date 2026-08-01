@@ -70,15 +70,18 @@ async function getAuthUrl(redirectUri) {
   if (!config.oauthCredentials || !config.oauthCredentials.client_id) {
     throw new Error('OAuth client credentials not configured');
   }
-  const { client_id, client_secret } = config.oauthCredentials;
+  const client_id = (config.oauthCredentials.client_id || '').trim();
+  const client_secret = (config.oauthCredentials.client_secret || '').trim();
+  const cleanRedirectUri = (redirectUri || config.oauthCredentials.redirect_uri || '').trim();
+
   const oauth2Client = new google.auth.OAuth2(
     client_id,
     client_secret,
-    redirectUri
+    cleanRedirectUri
   );
-
+  
   // Store redirectUri in config temporarily
-  config.oauthCredentials = { ...config.oauthCredentials, redirect_uri: redirectUri };
+  config.oauthCredentials = { ...config.oauthCredentials, redirect_uri: cleanRedirectUri };
   config.markModified('oauthCredentials');
   await config.save();
 
@@ -97,17 +100,18 @@ async function handleOAuthCallback(code, redirectUri) {
   if (!config.oauthCredentials || !config.oauthCredentials.client_id) {
     throw new Error('OAuth client credentials not configured');
   }
-  const { client_id, client_secret } = config.oauthCredentials;
-  const effectiveRedirectUri = redirectUri || config.oauthCredentials.redirect_uri;
+  const client_id = (config.oauthCredentials.client_id || '').trim();
+  const client_secret = (config.oauthCredentials.client_secret || '').trim();
+  const cleanRedirectUri = (redirectUri || config.oauthCredentials.redirect_uri || '').trim();
 
   const oauth2Client = new google.auth.OAuth2(
     client_id,
     client_secret,
-    effectiveRedirectUri
+    cleanRedirectUri
   );
 
   try {
-    const { tokens } = await oauth2Client.getToken(code);
+    const { tokens } = await oauth2Client.getToken(code.trim());
     if (config.oauthTokens && config.oauthTokens.refresh_token && !tokens.refresh_token) {
       tokens.refresh_token = config.oauthTokens.refresh_token;
     }

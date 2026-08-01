@@ -2,6 +2,7 @@ const express = require('express');
 const Attendance = require('../models/Attendance');
 const Student = require('../models/Student');
 const { protect } = require('../middleware/auth');
+const { scheduleBackup } = require('../services/backupService');
 
 const router = express.Router();
 
@@ -57,6 +58,12 @@ router.post('/mark', async (req, res) => {
     if (ops.length > 0) {
       await Attendance.bulkWrite(ops, { ordered: false });
     }
+
+    // Trigger debounced Google Drive backup (fire-and-forget)
+    scheduleBackup().catch((err) =>
+      console.warn('⚠️  Backup schedule error:', err.message)
+    );
+
     res.json({ message: 'Attendance saved', count: records.length });
   } catch (err) {
     res.status(500).json({ message: err.message });

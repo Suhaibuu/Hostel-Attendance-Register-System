@@ -14,10 +14,10 @@ export default function LoginPage() {
   const navigate = useNavigate();
 
   const [identifier, setIdentifier] = useState(''); // email or rollNo
-  const [password, setPassword]     = useState('');
-  const [showPass, setShowPass]     = useState(false);
-  const [loading, setLoading]       = useState(false);
-  const [error, setError]           = useState('');
+  const [password, setPassword] = useState('');
+  const [showPass, setShowPass] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   // Derive detected mode from identifier
   const detectedMode = (() => {
@@ -30,7 +30,7 @@ export default function LoginPage() {
   // Already logged in → redirect
   useEffect(() => {
     if (!user) return;
-    if (user.role === 'admin')   navigate('/admin',   { replace: true });
+    if (user.role === 'admin') navigate('/admin', { replace: true });
     else if (user.role === 'student') navigate('/student', { replace: true });
     else navigate('/warden', { replace: true });
   }, [user, navigate]);
@@ -39,7 +39,7 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     if (!identifier.trim()) { setError('Please enter your email or roll number'); return; }
-    if (!password)          { setError('Please enter your password'); return; }
+    if (!password) { setError('Please enter your password'); return; }
 
     setLoading(true);
     try {
@@ -68,20 +68,20 @@ export default function LoginPage() {
   const modeLabel = detectedMode === 'staff'
     ? { tag: 'Staff Portal', color: 'text-violet-600 bg-violet-50 border-violet-200' }
     : detectedMode === 'student'
-    ? { tag: 'Student Portal', color: 'text-emerald-600 bg-emerald-50 border-emerald-200' }
-    : null;
+      ? { tag: 'Student Portal', color: 'text-emerald-600 bg-emerald-50 border-emerald-200' }
+      : null;
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center p-4 relative overflow-hidden"
-         style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5fe 50%, #f0fdf9 100%)' }}>
-      
+      style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5fe 50%, #f0fdf9 100%)' }}>
+
       {/* Decorative blobs */}
       <div className="absolute top-[-15%] left-[-10%] w-[500px] h-[500px] rounded-full pointer-events-none"
-           style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 70%)' }} />
+        style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 70%)' }} />
       <div className="absolute bottom-[-10%] right-[-10%] w-[450px] h-[450px] rounded-full pointer-events-none"
-           style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.07) 0%, transparent 70%)' }} />
+        style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.07) 0%, transparent 70%)' }} />
       <div className="absolute top-[40%] left-[60%] w-[300px] h-[300px] rounded-full pointer-events-none"
-           style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.05) 0%, transparent 70%)' }} />
+        style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.05) 0%, transparent 70%)' }} />
 
       <div className="w-full max-w-[420px] z-10">
         {/* Brand Header */}
@@ -169,14 +169,13 @@ export default function LoginPage() {
                   autoComplete="username"
                   value={identifier}
                   onChange={(e) => { setIdentifier(e.target.value); setError(''); }}
-                  placeholder="admin@hostel.com  or  CST221"
-                  className={`w-full bg-slate-50/60 border rounded-2xl pl-11 pr-4 py-3.5 text-sm outline-none transition-all font-medium text-slate-800 placeholder:text-slate-400 ${
-                    detectedMode === 'staff'
+                  placeholder="admin@hostel.com  or  WYD23CS047"
+                  className={`w-full bg-slate-50/60 border rounded-2xl pl-11 pr-4 py-3.5 text-sm outline-none transition-all font-medium text-slate-800 placeholder:text-slate-400 ${detectedMode === 'staff'
                       ? 'border-violet-300 focus:border-violet-500 focus:ring-4 focus:ring-violet-100 focus:bg-white'
                       : detectedMode === 'student'
-                      ? 'border-emerald-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 focus:bg-white uppercase'
-                      : 'border-slate-200/80 focus:border-primary-500 focus:ring-4 focus:ring-primary-100 focus:bg-white'
-                  }`}
+                        ? 'border-emerald-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 focus:bg-white uppercase'
+                        : 'border-slate-200/80 focus:border-primary-500 focus:ring-4 focus:ring-primary-100 focus:bg-white'
+                    }`}
                   required
                   disabled={loading}
                 />
@@ -251,11 +250,10 @@ export default function LoginPage() {
               type="submit"
               disabled={loading}
               whileTap={{ scale: 0.98 }}
-              className={`w-full text-white font-bold py-3.5 px-4 rounded-2xl transition-all flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer mt-2 ${
-                detectedMode === 'student'
+              className={`w-full text-white font-bold py-3.5 px-4 rounded-2xl transition-all flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer mt-2 ${detectedMode === 'student'
                   ? 'bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-500/20'
                   : 'bg-primary-600 hover:bg-primary-700 shadow-lg shadow-violet-500/20'
-              }`}
+                }`}
             >
               {loading ? (
                 <Spinner size="sm" color="white" />

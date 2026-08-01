@@ -6,12 +6,14 @@ import Button from '../components/ui/Button';
 import StudentsTab from '../components/admin/StudentsTab';
 import AttendanceTab from '../components/admin/AttendanceTab';
 import ControlCenterTab from '../components/admin/ControlCenterTab';
-import { LayoutDashboard, Users, ClipboardCheck, LogOut } from 'lucide-react';
+import BackupSettingsTab from '../components/admin/BackupSettingsTab';
+import { LayoutDashboard, Users, ClipboardCheck, CloudUpload, LogOut } from 'lucide-react';
 
 const tabs = [
   { id: 'overview', label: 'Control Center', icon: LayoutDashboard },
   { id: 'students', label: 'Students Directory', icon: Users },
   { id: 'attendance', label: 'Attendance Logs', icon: ClipboardCheck },
+  { id: 'backup', label: 'Drive Backup', icon: CloudUpload },
 ];
 
 export default function AdminPage() {
@@ -76,6 +78,7 @@ export default function AdminPage() {
           {activeTab === 'overview' && <ControlCenterTab />}
           {activeTab === 'students' && <StudentsTab />}
           {activeTab === 'attendance' && <AttendanceTab />}
+          {activeTab === 'backup' && <BackupSettingsTab />}
         </div>
       </main>
     </PageWrapper>

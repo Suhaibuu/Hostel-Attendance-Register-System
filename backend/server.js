@@ -60,6 +60,7 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/students', require('./routes/students'));
 app.use('/api/attendance', require('./routes/attendance'));
+app.use('/api/backup', require('./routes/backup'));
 
 // ---------------- Root Route ----------------
 app.get('/', (_req, res) => {

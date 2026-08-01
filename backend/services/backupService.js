@@ -18,6 +18,14 @@ async function getConfig() {
   if (!config) {
     config = await BackupConfig.create({ configKey: 'primary' });
   }
+  // Sanitize folder ID — strip trailing dots/slashes from bad pastes
+  if (config.driveFolderId) {
+    const cleaned = config.driveFolderId.replace(/[\s./]+$/, '').trim();
+    if (cleaned !== config.driveFolderId) {
+      config.driveFolderId = cleaned;
+      await config.save();
+    }
+  }
   return config;
 }
 
@@ -332,10 +340,53 @@ async function backfillMissingDates() {
   return result;
 }
 
+/**
+ * Create a "HostelTrack Backups" folder on Google Drive using the service account,
+ * and save the folder ID to config.
+ */
+async function createDriveFolder() {
+  const config = await getConfig();
+
+  if (!config.serviceAccountJson) {
+    return { success: false, error: 'Service account credentials not configured' };
+  }
+
+  const drive = buildDriveClient(config.serviceAccountJson);
+
+  try {
+    const response = await drive.files.create({
+      requestBody: {
+        name: 'HostelTrack Backups',
+        mimeType: 'application/vnd.google-apps.folder',
+      },
+      fields: 'id, name, webViewLink',
+    });
+
+    const folder = response.data;
+
+    // Save folder ID to config
+    config.driveFolderId = folder.id;
+    config.updatedAt = new Date();
+    await config.save();
+
+    console.log(`📁 Created Drive folder: ${folder.name} (ID: ${folder.id})`);
+
+    return {
+      success: true,
+      folderId: folder.id,
+      folderName: folder.name,
+      webViewLink: folder.webViewLink || `https://drive.google.com/drive/folders/${folder.id}`,
+    };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
 module.exports = {
   getConfig,
   scheduleBackup,
   performBackup,
   testConnection,
   backfillMissingDates,
+  createDriveFolder,
 };

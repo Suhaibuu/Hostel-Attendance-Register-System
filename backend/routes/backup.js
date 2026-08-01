@@ -1,7 +1,7 @@
 const express = require('express');
 const { protect } = require('../middleware/auth');
 const BackupConfig = require('../models/BackupConfig');
-const { getConfig, performBackup, testConnection, backfillMissingDates } = require('../services/backupService');
+const { getConfig, performBackup, testConnection, backfillMissingDates, createDriveFolder } = require('../services/backupService');
 
 const router = express.Router();
 
@@ -71,7 +71,8 @@ router.put('/config', async (req, res) => {
     }
 
     if (driveFolderId !== undefined) {
-      config.driveFolderId = driveFolderId || null;
+      // Strip trailing dots, slashes, whitespace that may come from copy-pasting URLs
+      config.driveFolderId = driveFolderId ? driveFolderId.replace(/[\s./]+$/, '').trim() : null;
     }
 
     config.updatedAt = new Date();
@@ -128,6 +129,21 @@ router.post('/backfill', async (req, res) => {
     res.json(result);
   } catch (err) {
     res.status(500).json({ status: 'failed', error: err.message });
+  }
+});
+
+// --------------- POST /api/backup/create-folder ---------------
+// Create a "HostelTrack Backups" folder on Google Drive
+router.post('/create-folder', async (req, res) => {
+  try {
+    const result = await createDriveFolder();
+    if (result.success) {
+      res.json(result);
+    } else {
+      res.status(400).json(result);
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

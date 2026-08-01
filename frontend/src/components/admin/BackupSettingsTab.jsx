@@ -5,10 +5,11 @@ import {
   testBackupConnection,
   triggerBackup,
   backfillMissingDates,
+  createDriveFolder,
 } from '../../api/backup';
 import {
   HardDrive, Cloud, CheckCircle, XCircle, RefreshCw, Upload,
-  Shield, Folder, Key, AlertTriangle, Wifi, Play, Trash2,
+  Shield, Folder, FolderPlus, Key, AlertTriangle, Wifi, Play, Trash2, ExternalLink,
 } from 'lucide-react';
 
 export default function BackupSettingsTab() {
@@ -21,12 +22,12 @@ export default function BackupSettingsTab() {
   const [triggerResult, setTriggerResult] = useState(null);
   const [backfilling, setBackfilling] = useState(false);
   const [backfillResult, setBackfillResult] = useState(null);
+  const [creatingFolder, setCreatingFolder] = useState(false);
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
 
   // Form state
   const [enabled, setEnabled] = useState(false);
-  const [folderId, setFolderId] = useState('');
   const [serviceJsonText, setServiceJsonText] = useState('');
   const [showJsonInput, setShowJsonInput] = useState(false);
 
@@ -36,7 +37,6 @@ export default function BackupSettingsTab() {
       const data = await getBackupConfig();
       setConfig(data);
       setEnabled(data.enabled);
-      setFolderId(data.driveFolderId || '');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -62,7 +62,6 @@ export default function BackupSettingsTab() {
     try {
       const payload = {
         enabled,
-        driveFolderId: folderId || null,
       };
 
       // Only include serviceAccountJson if the user entered new credentials
@@ -321,24 +320,68 @@ export default function BackupSettingsTab() {
           )}
         </div>
 
-        {/* Folder ID */}
+        {/* Drive Folder */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Folder className="w-3.5 h-3.5 text-slate-400" />
             <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-              Google Drive Folder ID
+              Google Drive Folder
             </label>
           </div>
-          <input
-            type="text"
-            value={folderId}
-            onChange={(e) => setFolderId(e.target.value)}
-            placeholder="e.g. 1aBcDeFgHiJkLmNoPqRsTuVwXyZ"
-            className="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono"
-          />
-          <p className="text-[10px] text-slate-400 ml-1">
-            The folder ID is the last part of the folder URL: drive.google.com/drive/folders/<strong>THIS_PART</strong>
-          </p>
+
+          {config?.driveFolderId ? (
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/50 flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-emerald-700 flex items-center gap-1.5">
+                  <span className="w-2 h-2 bg-emerald-500 rounded-full" />
+                  Folder Connected
+                </p>
+                <p className="text-[10px] text-slate-400 font-mono break-all">{config.driveFolderId}</p>
+              </div>
+              <a
+                href={`https://drive.google.com/drive/folders/${config.driveFolderId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200/60 transition-smooth uppercase tracking-wider shrink-0"
+              >
+                <ExternalLink className="w-3 h-3" />
+                Open
+              </a>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <button
+                onClick={async () => {
+                  clearMessages();
+                  setCreatingFolder(true);
+                  try {
+                    const result = await createDriveFolder();
+                    if (result.success) {
+                      setSuccessMsg(`Folder created: ${result.folderName}`);
+                      await fetchConfig();
+                    } else {
+                      setError(result.error || 'Failed to create folder');
+                    }
+                  } catch (err) {
+                    setError(err.message);
+                  } finally {
+                    setCreatingFolder(false);
+                  }
+                }}
+                disabled={creatingFolder || !isConfigured}
+                className="w-full py-3 bg-slate-50 hover:bg-slate-100 text-slate-700 text-sm font-bold rounded-xl border-2 border-dashed border-slate-300 hover:border-primary-400 transition-smooth cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {creatingFolder ? (
+                  <><RefreshCw className="w-4 h-4 animate-spin" /> Creating folder...</>
+                ) : (
+                  <><FolderPlus className="w-4 h-4" /> Create Backup Folder on Drive</>
+                )}
+              </button>
+              {!isConfigured && (
+                <p className="text-[10px] text-amber-500 ml-1">Add service account credentials first</p>
+              )}
+            </div>
+          )}
         </div>
 
 

@@ -24,3 +24,8 @@ export const backfillMissingDates = async () => {
   const { data } = await api.post('/api/backup/backfill');
   return data;
 };
+
+export const createDriveFolder = async () => {
+  const { data } = await api.post('/api/backup/create-folder');
+  return data;
+};

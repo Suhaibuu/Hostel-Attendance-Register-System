@@ -53,11 +53,11 @@ function buildDriveClient(config) {
 function formatDriveError(err) {
   if (!err) return 'Unknown error';
   const msg = err.message || String(err);
-  if (msg.includes('Service Accounts do not have storage quota')) {
-    return 'Google Drive Policy Restriction: Service Accounts have 0-byte storage quota on personal @gmail.com accounts. To fix: Create a folder in your personal Drive and SHARE IT with your service account email as Editor, then paste that Folder ID in settings.';
+  if (msg.includes('Service Accounts do not have storage quota') || msg.includes('storage quota')) {
+    return 'Google Drive storage quota exceeded or restricted. Please check your Google Drive storage limits.';
   }
   if (msg.includes('File not found')) {
-    return 'Drive folder not found or not accessible. Make sure your service account email is added as Editor on your Drive folder.';
+    return 'Drive folder not found or not accessible. Please ensure the Folder ID is correct and exists in this Google Account. Try using the Auto-Create button.';
   }
   return msg;
 }

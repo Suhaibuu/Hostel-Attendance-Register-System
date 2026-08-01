@@ -458,15 +458,16 @@ export default function BackupSettingsTab() {
             </button>
           </div>
 
-          <div className="p-3 bg-amber-50/80 rounded-xl border border-amber-200/60 space-y-1">
-            <p className="text-[11px] font-bold text-amber-800 flex items-center gap-1">
-              <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-              How to fix "Service Accounts do not have storage quota":
+          <div className="p-3 bg-blue-50/80 rounded-xl border border-blue-200/60 space-y-1">
+            <p className="text-[11px] font-bold text-blue-800 flex items-center gap-1">
+              <FolderPlus className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+              How to set up your Backup Folder:
             </p>
-            <ol className="text-[10px] text-amber-700 space-y-0.5 ml-4 list-disc leading-relaxed">
-              <li>Open your personal Google Drive and create a new folder named <strong>HostelTrack Backups</strong>.</li>
-              <li>Right-click the folder → <strong>Share</strong> → paste your Service Account email (<strong>{config?.serviceAccount?.client_email || 'your-service-account@...'}</strong>) with <strong>Editor</strong> permission.</li>
-              <li>Copy the folder ID from the URL (`drive.google.com/drive/folders/<strong>FOLDER_ID</strong>`) and paste it above, then click <strong>Save Configuration</strong>.</li>
+            <ol className="text-[10px] text-blue-700 space-y-0.5 ml-4 list-decimal leading-relaxed">
+              <li>Click <strong>Auto-Create</strong> above to automatically generate a `HostelTrack Backups` folder.</li>
+              <li>OR, manually create a folder in your Google Drive.</li>
+              <li>Copy the folder ID from the URL (`drive.google.com/drive/folders/<strong>FOLDER_ID</strong>`).</li>
+              <li>Paste it above, then click <strong>Save Configuration</strong>.</li>
             </ol>
           </div>
         </div>

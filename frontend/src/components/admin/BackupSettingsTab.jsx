@@ -388,7 +388,7 @@ export default function BackupSettingsTab() {
               Setup a Web Application OAuth Client in Google Cloud Console with Authorized Redirect URI:
               <br />
               <strong className="font-mono bg-slate-100 text-blue-800 px-2 py-1 rounded break-all select-all text-[11px] font-bold block mt-1 border border-slate-200">
-                {(import.meta.env.VITE_API_URL || window.location.origin).replace(/\/$/, '')}/api/backup/oauth/callback
+                {window.location.origin}/admin
               </strong>
             </p>
             
@@ -399,9 +399,8 @@ export default function BackupSettingsTab() {
                   clearMessages();
                   setSaving(true);
                   try {
-                    const serverApiUrl = (import.meta.env.VITE_API_URL || window.location.origin).replace(/\/$/, '');
-                    const backendRedirectUri = `${serverApiUrl}/api/backup/oauth/callback`;
-                    const res = await getOAuthUrl(backendRedirectUri, clientId, clientSecret);
+                    const frontendRedirectUri = `${window.location.origin}/admin`;
+                    const res = await getOAuthUrl(frontendRedirectUri, clientId, clientSecret);
                     if (res.url) {
                       window.location.href = res.url;
                     }

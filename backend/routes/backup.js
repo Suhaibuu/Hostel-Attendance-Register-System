@@ -5,7 +5,33 @@ const { getConfig, performBackup, testConnection, backfillMissingDates, createDr
 
 const router = express.Router();
 
-// All routes require authentication
+// --------------- Public GET /api/backup/oauth/callback ---------------
+// Direct server callback endpoint for Google OAuth2 browser redirect
+router.get('/oauth/callback', async (req, res) => {
+  const frontendUrl = process.env.FRONTEND_URL || 'https://menshostel.vercel.app';
+  const targetUrl = `${frontendUrl.replace(/\/$/, '')}/admin`;
+
+  const { code, error } = req.query;
+
+  if (error) {
+    return res.redirect(`${targetUrl}?oauth=error&msg=${encodeURIComponent(error)}`);
+  }
+
+  if (!code) {
+    return res.redirect(`${targetUrl}?oauth=error&msg=${encodeURIComponent('No code returned from Google')}`);
+  }
+
+  try {
+    const { handleOAuthCallback } = require('../services/backupService');
+    await handleOAuthCallback(code);
+    return res.redirect(`${targetUrl}?oauth=success`);
+  } catch (err) {
+    console.error('Server OAuth callback error:', err);
+    return res.redirect(`${targetUrl}?oauth=error&msg=${encodeURIComponent(err.message)}`);
+  }
+});
+
+// All subsequent routes require authentication & admin role
 router.use(protect);
 
 // ── Admin-only middleware ──

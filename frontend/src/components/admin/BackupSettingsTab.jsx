@@ -83,10 +83,20 @@ export default function BackupSettingsTab() {
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
+    const oauthStatus = urlParams.get('oauth');
+    const oauthMsg = urlParams.get('msg');
     const code = urlParams.get('code');
     const origin = window.location.origin;
     
-    if (code && handledCodeRef.current !== code) {
+    if (oauthStatus === 'success') {
+      window.history.replaceState({}, document.title, window.location.pathname);
+      setSuccessMsg('Successfully connected to Google Drive!');
+      fetchConfig(false, false);
+    } else if (oauthStatus === 'error') {
+      window.history.replaceState({}, document.title, window.location.pathname);
+      setError(oauthMsg || 'Failed to connect to Google Drive');
+      fetchConfig(false, false);
+    } else if (code && handledCodeRef.current !== code) {
       handledCodeRef.current = code;
       // Strip ?code= from URL immediately so React re-renders or page refreshes don't re-trigger
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -106,7 +116,7 @@ export default function BackupSettingsTab() {
           fetchConfig(false, false);
         })
         .finally(() => setIsHandlingOAuth(false));
-    } else if (!code) {
+    } else if (!code && !oauthStatus) {
       fetchConfig();
     }
   }, []);

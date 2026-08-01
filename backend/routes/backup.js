@@ -147,4 +147,39 @@ router.post('/create-folder', async (req, res) => {
   }
 });
 
+// --------------- GET /api/backup/oauth/url ---------------
+// Generate Google OAuth URL
+router.get('/oauth/url', async (req, res) => {
+  try {
+    const { getAuthUrl } = require('../services/backupService');
+    // The redirect URI should be the frontend admin page exactly without query params
+    // If req.headers.referer is present, use it, stripping query params.
+    let redirectUri = req.query.redirectUri;
+    if (!redirectUri && req.headers.referer) {
+       const url = new URL(req.headers.referer);
+       redirectUri = url.origin + url.pathname;
+    }
+    const authUrl = await getAuthUrl(redirectUri);
+    res.json({ url: authUrl });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// --------------- POST /api/backup/oauth/callback ---------------
+// Handle OAuth callback code
+router.post('/oauth/callback', async (req, res) => {
+  try {
+    const { code } = req.body;
+    if (!code) {
+      return res.status(400).json({ success: false, error: 'Code is required' });
+    }
+    const { handleOAuthCallback } = require('../services/backupService');
+    const result = await handleOAuthCallback(code);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;

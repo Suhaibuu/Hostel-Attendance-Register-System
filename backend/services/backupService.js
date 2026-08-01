@@ -30,14 +30,95 @@ async function getConfig() {
 }
 
 /**
- * Build an authenticated Google Drive client from stored service account JSON.
+ * Build an authenticated Google Drive client from stored config (OAuth2 or Service Account).
  */
-function buildDriveClient(serviceAccountJson) {
-  const auth = new google.auth.GoogleAuth({
-    credentials: serviceAccountJson,
-    scopes: ['https://www.googleapis.com/auth/drive'],
+function buildDriveClient(config) {
+  if (config.oauthTokens && config.oauthTokens.refresh_token) {
+    const { client_id, client_secret, redirect_uri } = config.oauthCredentials || {};
+    const oauth2Client = new google.auth.OAuth2(
+      client_id,
+      client_secret,
+      redirect_uri
+    );
+    oauth2Client.setCredentials(config.oauthTokens);
+    return google.drive({ version: 'v3', auth: oauth2Client });
+  }
+
+  if (config.serviceAccountJson) {
+    const auth = new google.auth.GoogleAuth({
+      credentials: config.serviceAccountJson,
+      scopes: ['https://www.googleapis.com/auth/drive'],
+    });
+    return google.drive({ version: 'v3', auth });
+  }
+
+  throw new Error('No Google credentials configured');
+}
+
+/**
+ * Format raw Google API errors into friendly actionable messages.
+ */
+function formatDriveError(err) {
+  if (!err) return 'Unknown error';
+  const msg = err.message || String(err);
+  if (msg.includes('Service Accounts do not have storage quota')) {
+    return 'Google Drive Policy Restriction: Service Accounts have 0-byte storage quota on personal @gmail.com accounts. To fix: Create a folder in your personal Drive and SHARE IT with your service account email as Editor, then paste that Folder ID in settings.';
+  }
+  if (msg.includes('File not found')) {
+    return 'Drive folder not found or not accessible. Make sure your service account email is added as Editor on your Drive folder.';
+  }
+  return msg;
+}
+
+/**
+ * Generate Google OAuth2 authorization URL.
+ */
+async function getAuthUrl(redirectUri) {
+  const config = await getConfig();
+  if (!config.oauthCredentials || !config.oauthCredentials.client_id) {
+    throw new Error('OAuth client credentials not configured');
+  }
+  const { client_id, client_secret } = config.oauthCredentials;
+  const oauth2Client = new google.auth.OAuth2(
+    client_id,
+    client_secret,
+    redirectUri
+  );
+  
+  // Store redirectUri in config temporarily
+  config.oauthCredentials = { ...config.oauthCredentials, redirect_uri: redirectUri };
+  config.markModified('oauthCredentials');
+  await config.save();
+
+  return oauth2Client.generateAuthUrl({
+    access_type: 'offline', // Required to get a refresh token
+    prompt: 'consent', // Force consent to ensure refresh token is returned
+    scope: ['https://www.googleapis.com/auth/drive'],
   });
-  return google.drive({ version: 'v3', auth });
+}
+
+/**
+ * Handle Google OAuth2 callback (exchange code for tokens).
+ */
+async function handleOAuthCallback(code) {
+  const config = await getConfig();
+  if (!config.oauthCredentials || !config.oauthCredentials.client_id) {
+    throw new Error('OAuth client credentials not configured');
+  }
+  const { client_id, client_secret, redirect_uri } = config.oauthCredentials;
+  const oauth2Client = new google.auth.OAuth2(
+    client_id,
+    client_secret,
+    redirect_uri
+  );
+
+  const { tokens } = await oauth2Client.getToken(code);
+  config.oauthTokens = tokens;
+  config.authType = 'oauth2';
+  config.markModified('oauthTokens');
+  await config.save();
+  
+  return { success: true };
 }
 
 /**
@@ -121,11 +202,12 @@ async function performBackup() {
   const config = await getConfig();
 
   // Pre-flight checks
+  const hasCreds = config.serviceAccountJson || (config.oauthTokens && config.oauthTokens.refresh_token);
   if (!config.enabled) {
     _backupInProgress = false;
     return { status: 'skipped', reason: 'disabled' };
   }
-  if (!config.serviceAccountJson || !config.driveFolderId) {
+  if (!hasCreds || !config.driveFolderId) {
     _backupInProgress = false;
     return { status: 'skipped', reason: 'not_configured' };
   }
@@ -140,7 +222,7 @@ async function performBackup() {
   await config.save();
 
   try {
-    const drive = buildDriveClient(config.serviceAccountJson);
+    const drive = buildDriveClient(config);
     const today = todayIST();
     const fileName = `HostelTrack_Backup_${today}.json`;
 
@@ -172,20 +254,21 @@ async function performBackup() {
     return { status: 'success', fileId: uploaded.id, fileName: uploaded.name };
 
   } catch (err) {
-    console.error('❌ Backup failed:', err.message);
+    const errMsg = formatDriveError(err);
+    console.error('❌ Backup failed:', errMsg);
 
     // Update config with failure
     config.lastBackup = {
       ...config.lastBackup,
       status: 'failed',
-      error: err.message,
+      error: errMsg,
       timestamp: new Date(),
     };
     config.updatedAt = new Date();
     await config.save();
 
     _backupInProgress = false;
-    return { status: 'failed', error: err.message };
+    return { status: 'failed', error: errMsg };
   }
 }
 
@@ -209,7 +292,8 @@ async function scheduleBackup() {
     return;
   }
 
-  if (!config.enabled || !config.serviceAccountJson || !config.driveFolderId) {
+  const hasCreds = config.serviceAccountJson || (config.oauthTokens && config.oauthTokens.refresh_token);
+  if (!config.enabled || !hasCreds || !config.driveFolderId) {
     return; // Not configured — silently skip
   }
 
@@ -232,13 +316,14 @@ async function scheduleBackup() {
  */
 async function testConnection() {
   const config = await getConfig();
+  const hasCreds = config.serviceAccountJson || (config.oauthTokens && config.oauthTokens.refresh_token);
 
-  if (!config.serviceAccountJson || !config.driveFolderId) {
-    return { success: false, error: 'Service account or folder ID not configured' };
+  if (!hasCreds || !config.driveFolderId) {
+    return { success: false, error: 'Google credentials or folder ID not configured' };
   }
 
   try {
-    const drive = buildDriveClient(config.serviceAccountJson);
+    const drive = buildDriveClient(config);
 
     // Try to list files in the folder (just 1, to verify access)
     await drive.files.list({
@@ -263,12 +348,13 @@ async function testConnection() {
  */
 async function backfillMissingDates() {
   const config = await getConfig();
+  const hasCreds = config.serviceAccountJson || (config.oauthTokens && config.oauthTokens.refresh_token);
 
-  if (!config.serviceAccountJson || !config.driveFolderId) {
+  if (!hasCreds || !config.driveFolderId) {
     return { status: 'failed', error: 'Not configured' };
   }
 
-  const drive = buildDriveClient(config.serviceAccountJson);
+  const drive = buildDriveClient(config);
 
   // 1. Get all distinct attendance dates from DB
   const allDates = await Attendance.distinct('date');
@@ -332,8 +418,9 @@ async function backfillMissingDates() {
       created++;
       console.log(`  ✅ ${fileName}`);
     } catch (err) {
-      console.error(`  ❌ Failed for ${date}:`, err.message);
-      errors.push({ date, error: err.message });
+      const errMsg = formatDriveError(err);
+      console.error(`  ❌ Failed for ${date}:`, errMsg);
+      errors.push({ date, error: errMsg });
     }
   }
 
@@ -351,17 +438,18 @@ async function backfillMissingDates() {
 }
 
 /**
- * Create a "HostelTrack Backups" folder on Google Drive using the service account,
+ * Create a "HostelTrack Backups" folder on Google Drive,
  * and save the folder ID to config.
  */
 async function createDriveFolder() {
   const config = await getConfig();
+  const hasCreds = config.serviceAccountJson || (config.oauthTokens && config.oauthTokens.refresh_token);
 
-  if (!config.serviceAccountJson) {
-    return { success: false, error: 'Service account credentials not configured' };
+  if (!hasCreds) {
+    return { success: false, error: 'Google credentials not configured' };
   }
 
-  const drive = buildDriveClient(config.serviceAccountJson);
+  const drive = buildDriveClient(config);
 
   try {
     const response = await drive.files.create({
@@ -399,4 +487,6 @@ module.exports = {
   testConnection,
   backfillMissingDates,
   createDriveFolder,
+  getAuthUrl,
+  handleOAuthCallback,
 };

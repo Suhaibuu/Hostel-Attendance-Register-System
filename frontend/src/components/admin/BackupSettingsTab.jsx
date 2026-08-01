@@ -6,10 +6,12 @@ import {
   triggerBackup,
   backfillMissingDates,
   createDriveFolder,
+  getOAuthUrl,
+  handleOAuthCallback,
 } from '../../api/backup';
 import {
   HardDrive, Cloud, CheckCircle, XCircle, RefreshCw, Upload,
-  Shield, Folder, FolderPlus, Key, AlertTriangle, Wifi, Play, Trash2, ExternalLink,
+  Shield, Folder, FolderPlus, Key, AlertTriangle, Wifi, Play, Trash2, ExternalLink, User,
 } from 'lucide-react';
 
 function renderTextWithLinks(text) {
@@ -50,24 +52,57 @@ export default function BackupSettingsTab() {
 
   // Form state
   const [enabled, setEnabled] = useState(false);
+  const [folderIdInput, setFolderIdInput] = useState('');
   const [serviceJsonText, setServiceJsonText] = useState('');
   const [showJsonInput, setShowJsonInput] = useState(false);
 
-  const fetchConfig = async () => {
+  const [authType, setAuthType] = useState('service_account');
+  const [clientId, setClientId] = useState('');
+  const [clientSecret, setClientSecret] = useState('');
+  
+  const [isHandlingOAuth, setIsHandlingOAuth] = useState(false);
+
+  const fetchConfig = async (clearUrlParams = false) => {
     setLoading(true);
     try {
       const data = await getBackupConfig();
       setConfig(data);
       setEnabled(data.enabled);
+      setFolderIdInput(data.driveFolderId || '');
+      setAuthType(data.authType || 'service_account');
+      if (data.oauthCredentials) {
+        setClientId(data.oauthCredentials.client_id || '');
+        setClientSecret(data.oauthCredentials.client_secret || '');
+      }
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
+      if (clearUrlParams) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
     }
   };
 
   useEffect(() => {
-    fetchConfig();
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    
+    if (code) {
+      setIsHandlingOAuth(true);
+      handleOAuthCallback(code)
+        .then(() => {
+          setSuccessMsg('Successfully connected to Google Drive!');
+          fetchConfig(true);
+        })
+        .catch((err) => {
+          setError(err.message || 'Failed to authenticate with Google');
+          fetchConfig(true);
+        })
+        .finally(() => setIsHandlingOAuth(false));
+    } else {
+      fetchConfig();
+    }
   }, []);
 
   const clearMessages = () => {
@@ -84,10 +119,21 @@ export default function BackupSettingsTab() {
     try {
       const payload = {
         enabled,
+        driveFolderId: folderIdInput || null,
+        authType,
       };
 
+      if (authType === 'oauth2') {
+        const origin = window.location.origin;
+        payload.oauthCredentials = {
+          client_id: clientId,
+          client_secret: clientSecret,
+          redirect_uri: `${origin}/admin`
+        };
+      }
+
       // Only include serviceAccountJson if the user entered new credentials
-      if (serviceJsonText.trim()) {
+      if (authType === 'service_account' && serviceJsonText.trim()) {
         try {
           payload.serviceAccountJson = JSON.parse(serviceJsonText);
         } catch {
@@ -212,9 +258,18 @@ export default function BackupSettingsTab() {
                 <span className="text-sm font-bold text-emerald-700">Credentials Configured</span>
               </div>
               <div className="p-3 bg-slate-50 rounded-xl space-y-1.5">
-                <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Service Account</p>
-                <p className="text-xs text-slate-700 font-mono break-all">{config.serviceAccount.client_email}</p>
-                <p className="text-[10px] text-slate-400 mt-1">Project: {config.serviceAccount.project_id}</p>
+                <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">
+                  {config.authType === 'oauth2' ? 'OAuth 2.0 Personal Drive' : 'Service Account'}
+                </p>
+                {config.authType === 'service_account' && config.serviceAccount && (
+                  <>
+                    <p className="text-xs text-slate-700 font-mono break-all">{config.serviceAccount.client_email}</p>
+                    <p className="text-[10px] text-slate-400 mt-1">Project: {config.serviceAccount.project_id}</p>
+                  </>
+                )}
+                {config.authType === 'oauth2' && (
+                  <p className="text-xs text-slate-700 font-mono break-all">Connected to Google Account</p>
+                )}
               </div>
             </div>
           ) : (
@@ -292,148 +347,191 @@ export default function BackupSettingsTab() {
           </button>
         </div>
 
-        {/* Service Account JSON */}
-        <div className="space-y-2">
+        {/* Authentication Method */}
+        <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Key className="w-3.5 h-3.5 text-slate-400" />
               <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                Service Account Credentials
+                Authentication Method
               </label>
             </div>
-            <div className="flex gap-2">
-              {isConfigured && (
-                <button
-                  onClick={handleRemoveCredentials}
-                  disabled={saving}
-                  className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200/60 transition-smooth cursor-pointer uppercase tracking-wider disabled:opacity-50"
-                >
-                  <Trash2 className="w-3 h-3" />
-                  Remove
-                </button>
-              )}
+            {isConfigured && (
               <button
-                onClick={() => setShowJsonInput(!showJsonInput)}
-                className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-lg border border-primary-200/60 transition-smooth cursor-pointer uppercase tracking-wider"
+                onClick={handleRemoveCredentials}
+                disabled={saving}
+                className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200/60 transition-smooth cursor-pointer uppercase tracking-wider disabled:opacity-50"
               >
-                <Upload className="w-3 h-3" />
-                {isConfigured ? 'Update' : 'Add'} Credentials
+                <Trash2 className="w-3 h-3" />
+                Remove Config
               </button>
-            </div>
+            )}
           </div>
 
-          {showJsonInput && (
-            <div className="animate-fade-in space-y-2">
+          <div className="flex gap-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="authType"
+                value="service_account"
+                checked={authType === 'service_account'}
+                onChange={(e) => setAuthType(e.target.value)}
+                className="text-primary-600 focus:ring-primary-500"
+              />
+              <span className="text-sm text-slate-700 font-medium">Service Account JSON</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="authType"
+                value="oauth2"
+                checked={authType === 'oauth2'}
+                onChange={(e) => setAuthType(e.target.value)}
+                className="text-primary-600 focus:ring-primary-500"
+              />
+              <span className="text-sm text-slate-700 font-medium">Personal Drive (OAuth 2.0)</span>
+            </label>
+          </div>
+
+          {authType === 'service_account' && (
+            <div className="animate-fade-in space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-200">
               <textarea
                 value={serviceJsonText}
                 onChange={(e) => setServiceJsonText(e.target.value)}
-                rows={8}
-                placeholder='Paste your Google service account JSON here...'
-                className="w-full p-4 text-xs font-mono bg-slate-900 text-emerald-400 rounded-2xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+                rows={6}
+                placeholder='Paste your Google service account JSON here to update...'
+                className="w-full p-4 text-xs font-mono bg-slate-900 text-emerald-400 rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
               />
-              <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-xl border border-amber-200/50">
-                <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                <p className="text-[11px] text-amber-700 leading-relaxed">
-                  The JSON file is downloaded from Google Cloud Console → IAM & Admin → Service Accounts → Keys.
-                  Make sure to share your Drive folder with the service account email as <strong>Editor</strong>.
-                </p>
+              <p className="text-[11px] text-slate-500">
+                Downloaded from Google Cloud Console. Must share the Drive folder with the service account email.
+              </p>
+            </div>
+          )}
+
+          {authType === 'oauth2' && (
+            <div className="animate-fade-in space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Client ID</label>
+                  <input
+                    type="text"
+                    value={clientId}
+                    onChange={(e) => setClientId(e.target.value)}
+                    placeholder="Enter OAuth Client ID"
+                    className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Client Secret</label>
+                  <input
+                    type="password"
+                    value={clientSecret}
+                    onChange={(e) => setClientSecret(e.target.value)}
+                    placeholder="Enter OAuth Client Secret"
+                    className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono"
+                  />
+                </div>
               </div>
+              <p className="text-[11px] text-slate-500">
+                Setup a Web Application OAuth Client in Google Cloud Console with Redirect URI: <strong className="font-mono bg-slate-200 px-1 rounded">{window.location.origin}/admin</strong>
+              </p>
+              
+              {clientId && clientSecret && (
+                <button
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    clearMessages();
+                    // Save first before redirecting so credentials are kept
+                    await handleSave();
+                    try {
+                      const res = await getOAuthUrl(`${window.location.origin}/admin`);
+                      window.location.href = res.url;
+                    } catch (err) {
+                      setError(err.message);
+                    }
+                  }}
+                  className="flex items-center justify-center gap-2 w-full py-2.5 mt-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-smooth"
+                >
+                  <User className="w-4 h-4" />
+                  Sign in with Google
+                </button>
+              )}
             </div>
           )}
         </div>
 
         {/* Drive Folder */}
         <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Folder className="w-3.5 h-3.5 text-slate-400" />
-            <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-              Google Drive Folder
-            </label>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Folder className="w-3.5 h-3.5 text-slate-400" />
+              <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                Google Drive Folder ID
+              </label>
+            </div>
+            {config?.driveFolderId && (
+              <a
+                href={`https://drive.google.com/drive/folders/${config.driveFolderId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-800 transition-smooth"
+              >
+                <ExternalLink className="w-3 h-3" />
+                Open Folder on Drive
+              </a>
+            )}
           </div>
 
-          {config?.driveFolderId ? (
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/50 flex items-center justify-between gap-2">
-              <div className="space-y-1 min-w-0">
-                <p className="text-xs font-bold text-emerald-700 flex items-center gap-1.5">
-                  <span className="w-2 h-2 bg-emerald-500 rounded-full" />
-                  Folder Connected
-                </p>
-                <p className="text-[10px] text-slate-400 font-mono truncate">{config.driveFolderId}</p>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={async () => {
-                    clearMessages();
-                    setCreatingFolder(true);
-                    try {
-                      const result = await createDriveFolder();
-                      if (result.success) {
-                        setSuccessMsg(`New folder created: ${result.folderName}`);
-                        await fetchConfig();
-                      } else {
-                        setError(result.error || 'Failed to create folder');
-                      }
-                    } catch (err) {
-                      setError(err.message);
-                    } finally {
-                      setCreatingFolder(false);
-                    }
-                  }}
-                  disabled={creatingFolder || !isConfigured}
-                  className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg border border-amber-200/60 transition-smooth uppercase tracking-wider disabled:opacity-50 cursor-pointer"
-                >
-                  {creatingFolder ? (
-                    <RefreshCw className="w-3 h-3 animate-spin" />
-                  ) : (
-                    <FolderPlus className="w-3 h-3" />
-                  )}
-                  Re-create Folder
-                </button>
-                <a
-                  href={`https://drive.google.com/drive/folders/${config.driveFolderId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200/60 transition-smooth uppercase tracking-wider"
-                >
-                  <ExternalLink className="w-3 h-3" />
-                  Open
-                </a>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <button
-                onClick={async () => {
-                  clearMessages();
-                  setCreatingFolder(true);
-                  try {
-                    const result = await createDriveFolder();
-                    if (result.success) {
-                      setSuccessMsg(`Folder created: ${result.folderName}`);
-                      await fetchConfig();
-                    } else {
-                      setError(result.error || 'Failed to create folder');
-                    }
-                  } catch (err) {
-                    setError(err.message);
-                  } finally {
-                    setCreatingFolder(false);
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={folderIdInput}
+              onChange={(e) => setFolderIdInput(e.target.value)}
+              placeholder="e.g. 1aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              className="flex-1 px-4 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono"
+            />
+            <button
+              onClick={async () => {
+                clearMessages();
+                setCreatingFolder(true);
+                try {
+                  const result = await createDriveFolder();
+                  if (result.success) {
+                    setSuccessMsg(`Folder created: ${result.folderName}`);
+                    await fetchConfig();
+                  } else {
+                    setError(result.error || 'Failed to create folder');
                   }
-                }}
-                disabled={creatingFolder || !isConfigured}
-                className="w-full py-3 bg-slate-50 hover:bg-slate-100 text-slate-700 text-sm font-bold rounded-xl border-2 border-dashed border-slate-300 hover:border-primary-400 transition-smooth cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {creatingFolder ? (
-                  <><RefreshCw className="w-4 h-4 animate-spin" /> Creating folder...</>
-                ) : (
-                  <><FolderPlus className="w-4 h-4" /> Create Backup Folder on Drive</>
-                )}
-              </button>
-              {!isConfigured && (
-                <p className="text-[10px] text-amber-500 ml-1">Add service account credentials first</p>
+                } catch (err) {
+                  setError(err.message);
+                } finally {
+                  setCreatingFolder(false);
+                }
+              }}
+              disabled={creatingFolder || !isConfigured}
+              title="Auto-create a folder on Drive"
+              className="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl border border-slate-200 transition-smooth cursor-pointer disabled:opacity-50 flex items-center gap-1.5 shrink-0"
+            >
+              {creatingFolder ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <FolderPlus className="w-3.5 h-3.5" />
               )}
-            </div>
-          )}
+              Auto-Create
+            </button>
+          </div>
+
+          <div className="p-3 bg-amber-50/80 rounded-xl border border-amber-200/60 space-y-1">
+            <p className="text-[11px] font-bold text-amber-800 flex items-center gap-1">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              How to fix "Service Accounts do not have storage quota":
+            </p>
+            <ol className="text-[10px] text-amber-700 space-y-0.5 ml-4 list-disc leading-relaxed">
+              <li>Open your personal Google Drive and create a new folder named <strong>HostelTrack Backups</strong>.</li>
+              <li>Right-click the folder → <strong>Share</strong> → paste your Service Account email (<strong>{config?.serviceAccount?.client_email || 'your-service-account@...'}</strong>) with <strong>Editor</strong> permission.</li>
+              <li>Copy the folder ID from the URL (`drive.google.com/drive/folders/<strong>FOLDER_ID</strong>`) and paste it above, then click <strong>Save Configuration</strong>.</li>
+            </ol>
+          </div>
         </div>
 
 

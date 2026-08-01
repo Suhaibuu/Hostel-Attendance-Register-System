@@ -4,25 +4,26 @@ import * as authApi from '../api/auth';
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
-
-  useEffect(() => {
-    const savedToken = localStorage.getItem('ht_token');
-    const savedUser  = localStorage.getItem('ht_user');
-    if (savedToken && savedUser) {
+  const [token, setToken] = useState(() => localStorage.getItem('ht_token'));
+  const [user, setUser] = useState(() => {
+    const savedUser = localStorage.getItem('ht_user');
+    if (savedUser) {
       try {
-        const u = JSON.parse(savedUser);
-        if (u) {
-          setToken(savedToken);
-          setUser(u);
-        }
+        return JSON.parse(savedUser);
       } catch (e) {
-        localStorage.removeItem('ht_token');
-        localStorage.removeItem('ht_user');
+        return null;
       }
     }
-  }, []);
+    return null;
+  });
+
+  useEffect(() => {
+    // If invalid JSON was found or missing, clean up
+    if (!user || !token) {
+      localStorage.removeItem('ht_token');
+      localStorage.removeItem('ht_user');
+    }
+  }, [user, token]);
 
   const _persist = (data) => {
     localStorage.setItem('ht_token', data.token);

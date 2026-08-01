@@ -330,23 +330,53 @@ export default function BackupSettingsTab() {
           </div>
 
           {config?.driveFolderId ? (
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/50 flex items-center justify-between">
-              <div className="space-y-1">
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/50 flex items-center justify-between gap-2">
+              <div className="space-y-1 min-w-0">
                 <p className="text-xs font-bold text-emerald-700 flex items-center gap-1.5">
                   <span className="w-2 h-2 bg-emerald-500 rounded-full" />
                   Folder Connected
                 </p>
-                <p className="text-[10px] text-slate-400 font-mono break-all">{config.driveFolderId}</p>
+                <p className="text-[10px] text-slate-400 font-mono truncate">{config.driveFolderId}</p>
               </div>
-              <a
-                href={`https://drive.google.com/drive/folders/${config.driveFolderId}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200/60 transition-smooth uppercase tracking-wider shrink-0"
-              >
-                <ExternalLink className="w-3 h-3" />
-                Open
-              </a>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={async () => {
+                    clearMessages();
+                    setCreatingFolder(true);
+                    try {
+                      const result = await createDriveFolder();
+                      if (result.success) {
+                        setSuccessMsg(`New folder created: ${result.folderName}`);
+                        await fetchConfig();
+                      } else {
+                        setError(result.error || 'Failed to create folder');
+                      }
+                    } catch (err) {
+                      setError(err.message);
+                    } finally {
+                      setCreatingFolder(false);
+                    }
+                  }}
+                  disabled={creatingFolder || !isConfigured}
+                  className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg border border-amber-200/60 transition-smooth uppercase tracking-wider disabled:opacity-50 cursor-pointer"
+                >
+                  {creatingFolder ? (
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <FolderPlus className="w-3 h-3" />
+                  )}
+                  Re-create Folder
+                </button>
+                <a
+                  href={`https://drive.google.com/drive/folders/${config.driveFolderId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200/60 transition-smooth uppercase tracking-wider"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  Open
+                </a>
+              </div>
             </div>
           ) : (
             <div className="space-y-2">

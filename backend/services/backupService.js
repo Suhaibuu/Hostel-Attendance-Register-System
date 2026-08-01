@@ -249,6 +249,9 @@ async function testConnection() {
 
     return { success: true, message: 'Connection successful' };
   } catch (err) {
+    if (err.message && err.message.includes('File not found')) {
+      return { success: false, error: `Folder (${config.driveFolderId}) not found or not accessible. Click 'Re-create Folder' to create a new folder automatically.` };
+    }
     return { success: false, error: err.message };
   }
 }
@@ -276,16 +279,23 @@ async function backfillMissingDates() {
   // 2. List all existing backup files on Drive
   let existingFiles = [];
   let pageToken = null;
-  do {
-    const res = await drive.files.list({
-      q: `'${config.driveFolderId}' in parents and name contains 'HostelTrack_Backup_' and trashed = false`,
-      pageSize: 1000,
-      fields: 'nextPageToken, files(id, name)',
-      pageToken: pageToken || undefined,
-    });
-    existingFiles = existingFiles.concat(res.data.files || []);
-    pageToken = res.data.nextPageToken;
-  } while (pageToken);
+  try {
+    do {
+      const res = await drive.files.list({
+        q: `'${config.driveFolderId}' in parents and name contains 'HostelTrack_Backup_' and trashed = false`,
+        pageSize: 1000,
+        fields: 'nextPageToken, files(id, name)',
+        pageToken: pageToken || undefined,
+      });
+      existingFiles = existingFiles.concat(res.data.files || []);
+      pageToken = res.data.nextPageToken;
+    } while (pageToken);
+  } catch (err) {
+    if (err.message && err.message.includes('File not found')) {
+      throw new Error(`Drive folder (${config.driveFolderId}) not found or not accessible. Please click 'Re-create Folder' to create a valid backup folder on Drive.`);
+    }
+    throw err;
+  }
 
   // Build a Set of dates that already have backups
   // File names are like: HostelTrack_Backup_2026-08-01.json

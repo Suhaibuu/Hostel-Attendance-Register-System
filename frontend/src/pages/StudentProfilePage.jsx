@@ -233,7 +233,7 @@ export default function StudentProfilePage() {
                         </div>
                         <div className="text-center py-1.5">
                           <p className="text-xs font-bold text-amber-600">{monthData.messCutDays || 0}</p>
-                          <p className="text-[10px] text-slate-400 uppercase font-semibold mt-0.5">Mess Cut</p>
+                          <p className="text-[10px] text-slate-400 uppercase font-semibold mt-0.5">Mess Cut Days</p>
                         </div>
                       </div>
 

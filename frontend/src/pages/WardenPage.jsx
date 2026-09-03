@@ -384,6 +384,17 @@ export default function WardenPage() {
     setMessCutMarks(updatedMessCut);
   }, [students]);
 
+  const markAllAbsent = useCallback(() => {
+    const updatedMarks = {};
+    const updatedMessCut = {};
+    students.forEach(s => {
+      updatedMarks[s.studentId] = false;
+      updatedMessCut[s.studentId] = true; // absent → mess cut by default
+    });
+    setMarks(updatedMarks);
+    setMessCutMarks(updatedMessCut);
+  }, [students]);
+
   const markedCount = useMemo(
     () => Object.values(marks).filter(v => v !== null).length,
     [marks]
@@ -572,12 +583,20 @@ export default function WardenPage() {
                             {students.length} Residents
                           </span>
                         </div>
-                        <button
-                          onClick={markAllPresent}
-                          className="py-1.5 px-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-bold transition-smooth flex items-center gap-1 cursor-pointer"
-                        >
-                          <ShieldCheck className="w-4 h-4" /> All Present
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={markAllPresent}
+                            className="py-1.5 px-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-bold transition-smooth flex items-center gap-1 cursor-pointer"
+                          >
+                            <ShieldCheck className="w-4 h-4" /> All Present
+                          </button>
+                          <button
+                            onClick={markAllAbsent}
+                            className="py-1.5 px-3 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 rounded-xl text-xs font-bold transition-smooth flex items-center gap-1 cursor-pointer"
+                          >
+                            <XCircle className="w-4 h-4" /> All Absent
+                          </button>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
